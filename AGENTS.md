@@ -1,3 +1,19 @@
+# Contexto del Proyecto: Ruta Pro-VE
+
+## ¿Qué es?
+Plataforma EdTech venezolana que reduce la brecha entre graduados universitarios y el mercado laboral. Combina el modelo de cursos de Udemy/Platzi con la gamificación de Duolingo, más un onboarding conversacional con IA que genera una ruta de aprendizaje personalizada.
+
+## Publico objetivo
+Estudiantes universitarios, recién graduados y bachilleres venezolanos que buscan prepararse para el mundo laboral. Foco inicial: carrera de Contabilidad.
+
+## Stack tecnológico
+- Framework: Next.js con TypeScript (App Router)
+- Base de datos + Auth: Supabase (PostgreSQL) + Prisma
+- Deploy: Vercel
+- Tipo: PWA (Progressive Web App)
+
+---
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
