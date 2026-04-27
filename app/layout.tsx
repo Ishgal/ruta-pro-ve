@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Nunito } from "next/font/google";
 import "./globals.css";
+import SWRegister from "./components/SWRegister"; // <-- Importa el componente cliente
 
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
@@ -20,6 +21,13 @@ export const metadata: Metadata = {
   title: "Ruta Pro-VE | Tu carrera empieza aquí",
   description:
     "Plataforma EdTech venezolana que te prepara para el mercado laboral con rutas de aprendizaje personalizadas por IA y gamificación.",
+  manifest: "/manifest.json",
+  themeColor: "#000000",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    viewportFit: "cover",
+  },
 };
 
 export default function RootLayout({
@@ -32,7 +40,10 @@ export default function RootLayout({
       lang="es"
       className={`${bricolage.variable} ${nunito.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <SWRegister /> {/* <-- Registra el Service Worker */}
+      </body>
     </html>
   );
 }
