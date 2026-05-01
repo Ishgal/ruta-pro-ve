@@ -1,339 +1,495 @@
-import DashboardHeader from '@/components/dashboard/DashboardHeader'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { prisma } from '@/lib/prisma'
+import { checkAndAwardBadges } from '@/lib/badges'
+import { checkAndAdvanceLevel } from '@/lib/level'
 import { logoutAction } from '@/app/actions/logout.actions'
+import DashboardHeader from '@/components/dashboard/DashboardHeader'
+import CertificatesSection from '@/components/dashboard/CertificatesSection'
 
 export const metadata = { title: 'Perfil | Ruta Pro-VE' }
 
-/* ── Mock data ─────────────────────────────────────────────────────────────── */
-const user = {
-  name: 'Alejandra Valdivia',
-  email: 'alejandra@universidad.edu',
-  title: 'Estudiante Senior',
-  location: 'Ciudad de México, MX',
-  memberSince: '2023',
-  points: 2450,
-  streak: 45,
-  coursesCompleted: 12,
-  level: 8,
-  levelName: 'Masterminé',
-  isPremium: false,
+// ─── Label maps ───────────────────────────────────────────────────────────────
+
+const CAREER_LABELS: Record<string, string> = {
+  contaduria: 'Contaduría Pública',
+  sistemas: 'Ingeniería de Sistemas',
 }
 
-const badges = [
-  { id: 1, label: 'Veloz', locked: false, color: 'bg-yellow-400', icon: '⚡' },
-  { id: 2, label: 'Lectura', locked: false, color: 'bg-blue-500', icon: '📖' },
-  { id: 3, label: 'Estrella', locked: false, color: 'bg-purple-500', icon: '⭐' },
-  { id: 4, label: 'Maestro', locked: true, color: 'bg-gray-300', icon: '🔒' },
-  { id: 5, label: 'Mentor', locked: true, color: 'bg-gray-300', icon: '🔒' },
-  { id: 6, label: 'Social', locked: true, color: 'bg-gray-300', icon: '🔒' },
-]
-
-const certificates = [
-  {
-    id: 1,
-    title: 'Fundamentos de UX Design',
-    date: 'Noviembre 2023',
-    id_code: 'UX-99283-VAL',
-    bgColor: 'bg-teal-600',
-    icon: '🎨',
-  },
-  {
-    id: 2,
-    title: 'Python para Ciencia de Datos',
-    date: 'Agosto 2023',
-    id_code: 'PD-11029-VAL',
-    bgColor: 'bg-gray-800',
-    icon: '🐍',
-  },
-]
-
-/* ── Components ─────────────────────────────────────────────────────────────── */
-
-function ProfileCard() {
-  return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-      {/* Desktop layout */}
-      <div className="hidden md:flex items-center gap-6 p-6 relative">
-        {/* Avatar */}
-        <div className="w-28 h-28 rounded-xl overflow-hidden bg-gray-100 shrink-0">
-          <div className="w-full h-full bg-gradient-to-br from-slate-600 to-slate-900 flex items-center justify-center">
-            <svg className="w-14 h-14 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-            </svg>
-          </div>
-        </div>
-
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <span className="text-xs font-bold tracking-widest text-[#00B5B5] uppercase mb-1 block">
-            {user.title}
-          </span>
-          <h1 className="text-2xl font-black text-gray-900 mb-2">{user.name}</h1>
-          <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-            <span className="flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              {user.location}
-            </span>
-            <span className="flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              Miembro desde {user.memberSince}
-            </span>
-          </div>
-        </div>
-
-        {/* Silhouette decorative */}
-        <div className="hidden lg:flex w-28 h-28 items-end justify-center opacity-10 shrink-0">
-          <svg viewBox="0 0 80 100" className="w-full h-full fill-gray-400">
-            <ellipse cx="40" cy="28" rx="18" ry="18" />
-            <path d="M10 100 Q10 60 40 55 Q70 60 70 100 Z" />
-          </svg>
-        </div>
-
-        {/* Edit button */}
-        <button className="shrink-0 px-5 py-2.5 rounded-xl bg-[#1B4F8C] text-white text-sm font-semibold hover:bg-[#1A3C6E] transition-colors duration-150 shadow-sm">
-          Editar Perfil
-        </button>
-      </div>
-
-      {/* Mobile layout */}
-      <div className="md:hidden flex flex-col items-center py-8 px-6 gap-3">
-        {/* Avatar with premium badge */}
-        <div className="relative">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-600 to-slate-900 flex items-center justify-center">
-            <svg className="w-10 h-10 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-            </svg>
-          </div>
-          {user.isPremium && (
-            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-[#00B5B5] text-white text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wider">
-              PREMIUM
-            </span>
-          )}
-        </div>
-
-        <div className="text-center">
-          <h1 className="text-xl font-black text-gray-900">{user.name}</h1>
-          <p className="text-sm text-gray-400 mt-0.5">{user.email}</p>
-        </div>
-
-        {/* Points + Streak inline */}
-        <div className="flex gap-px overflow-hidden rounded-xl border border-gray-100 w-full mt-1">
-          <div className="flex-1 py-3 text-center bg-gray-50">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Puntos</p>
-            <p className="text-lg font-black text-gray-900">{user.points.toLocaleString()}</p>
-          </div>
-          <div className="flex-1 py-3 text-center bg-gray-50">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Racha</p>
-            <p className="text-lg font-black text-gray-900">{user.streak} Días</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+const EDUCATION_LABELS: Record<string, string> = {
+  bachiller: 'Bachiller',
+  universitario: 'Estudiante universitario',
+  recien_graduado: 'Recién graduado',
+  graduado_experiencia: 'Graduado con experiencia',
 }
 
-function StatsRow() {
-  return (
-    <div className="hidden md:grid grid-cols-3 gap-4">
-      {/* Streak card — blue gradient */}
-      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-[#4B9BFB] to-[#1A5FD4] text-white p-5 shadow-sm">
-        {/* Decorative waves */}
-        <div className="absolute bottom-0 left-0 right-0 h-16 opacity-10">
-          <svg viewBox="0 0 300 60" className="w-full h-full" preserveAspectRatio="none">
-            <path d="M0 30 Q75 0 150 30 Q225 60 300 30 L300 60 L0 60 Z" fill="white" />
-            <path d="M0 40 Q75 10 150 40 Q225 70 300 40 L300 60 L0 60 Z" fill="white" opacity="0.5" />
-          </svg>
-        </div>
-        <p className="font-bold text-sm mb-1">Racha de Aprendizaje</p>
-        <p className="text-white/70 text-xs mb-4">Has mantenido tu ritmo por {user.streak} días consecutivos.</p>
-        <p className="text-5xl font-black">{user.streak}<span className="text-xl font-semibold ml-2">días</span></p>
-      </div>
-
-      {/* Courses completed */}
-      <div className="rounded-2xl bg-white p-5 flex flex-col items-center justify-center gap-2 shadow-sm">
-        <div className="w-12 h-12 rounded-full bg-[#E6F8F8] flex items-center justify-center">
-          <svg className="w-6 h-6 text-[#00B5B5]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-          </svg>
-        </div>
-        <p className="text-4xl font-black text-gray-900">{user.coursesCompleted}</p>
-        <p className="text-sm text-gray-500 text-center">Cursos Completados</p>
-      </div>
-
-      {/* Level */}
-      <div className="rounded-2xl bg-white p-5 flex flex-col items-center justify-center gap-2 shadow-sm">
-        <div className="w-12 h-12 rounded-full bg-[#E6F8F8] flex items-center justify-center">
-          <svg className="w-6 h-6 text-[#00B5B5]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-          </svg>
-        </div>
-        <p className="text-4xl font-black text-gray-900">Nivel {user.level}</p>
-        <p className="text-sm text-gray-500">{user.levelName}</p>
-      </div>
-    </div>
-  )
+const GOAL_LABELS: Record<string, string> = {
+  primer_empleo: 'Conseguir primer empleo',
+  crecer: 'Crecer en empleo actual',
+  cambiar_area: 'Cambiar de área',
+  freelance: 'Trabajar como freelance',
+  emprender: 'Emprender',
 }
 
-function UpgradeCard() {
-  return (
-    <div className="md:hidden rounded-2xl bg-gradient-to-br from-[#1B6EF5] to-[#0A4BCC] text-white p-5">
-      <p className="font-black text-base uppercase tracking-wide mb-1">Desbloquea el Mapa Completo</p>
-      <p className="text-white/75 text-xs leading-relaxed mb-4">
-        Acceso a certificados oficiales, mentoría 1:1 y contenido exclusivo sin límites.
-      </p>
-      <button className="w-full py-3 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-sm transition-colors duration-150">
-        Actualizar a Premium 🚀
-      </button>
-    </div>
-  )
+const TIMELINE_LABELS: Record<string, string> = {
+  urgente: '1 a 3 meses',
+  seis_meses: '6 meses',
+  un_año: '1 año',
+  sin_prisa: 'Sin prisa',
 }
 
-function BadgesSection() {
-  return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-bold text-gray-900">
-          <span className="md:hidden">Mis Medallas</span>
-          <span className="hidden md:inline">Insignias Logradas</span>
-        </h2>
-        <button className="text-sm text-[#00B5B5] font-semibold hover:underline">Ver todos</button>
-      </div>
-
-      {/* Desktop: 4 badges in a row */}
-      <div className="hidden md:flex gap-5">
-        {badges.slice(0, 4).map((badge) => (
-          <div key={badge.id} className="flex flex-col items-center gap-2">
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl ${badge.locked ? 'bg-gray-100' : badge.color}`}>
-              {badge.locked ? (
-                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              ) : (
-                badge.icon
-              )}
-            </div>
-            <span className={`text-[11px] font-semibold uppercase tracking-wider ${badge.locked ? 'text-gray-400' : 'text-gray-600'}`}>
-              {badge.label}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Mobile: 3-column grid, all 6 badges */}
-      <div className="md:hidden grid grid-cols-3 gap-4">
-        {badges.map((badge) => (
-          <div key={badge.id} className="flex flex-col items-center gap-1.5">
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl ${badge.locked ? 'bg-gray-100' : badge.color}`}>
-              {badge.locked ? (
-                <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              ) : (
-                badge.icon
-              )}
-            </div>
-            <span className={`text-[10px] font-semibold uppercase tracking-wider text-center ${badge.locked ? 'text-gray-300' : 'text-gray-500'}`}>
-              {badge.label}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
+const HOURS_LABELS: Record<string, string> = {
+  uno_a_tres: '1 - 3 h / semana',
+  tres_a_cinco: '3 - 5 h / semana',
+  cinco_a_diez: '5 - 10 h / semana',
+  diez_mas: '+10 h / semana',
 }
 
-function CertificatesSection() {
-  return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-bold text-gray-900">
-          <span className="md:hidden">Certificados Obtenidos</span>
-          <span className="hidden md:inline">Certificados Recientes</span>
-        </h2>
-        <button className="hidden md:block text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-3 py-1.5 rounded-lg transition-colors duration-150">
-          Compartir Logros
-        </button>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        {certificates.map((cert) => (
-          <div key={cert.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors duration-150">
-            {/* Thumbnail */}
-            <div className={`w-16 h-12 rounded-lg ${cert.bgColor} flex items-center justify-center text-2xl shrink-0`}>
-              {cert.icon}
-            </div>
-
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 text-sm truncate">{cert.title}</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                <span className="md:hidden">Finalizado </span>
-                <span className="hidden md:inline">Emitido en </span>
-                {cert.date}
-              </p>
-              <div className="hidden md:flex items-center gap-2 mt-1">
-                <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  Verificado
-                </span>
-                <span className="text-xs text-gray-400">ID: {cert.id_code}</span>
-              </div>
-            </div>
-
-            {/* Action */}
-            <div>
-              {/* Desktop: download icon */}
-              <button className="hidden md:flex w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 items-center justify-center transition-colors duration-150" aria-label="Descargar">
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-              </button>
-              {/* Mobile: text button */}
-              <button className="md:hidden text-[11px] font-bold text-[#00B5B5] border border-[#00B5B5] px-3 py-1.5 rounded-lg whitespace-nowrap hover:bg-[#E6F8F8] transition-colors duration-150">
-                VER CERTIFICADO
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
+const MODALITY_LABELS: Record<string, string> = {
+  presencial: 'Presencial',
+  remoto: 'Remoto',
+  ambos: 'Ambas modalidades',
 }
 
-/* ── Page ───────────────────────────────────────────────────────────────────── */
-export default function ProfilePage() {
+const STATUS_LABELS: Record<string, string> = {
+  desempleado: 'Desempleado',
+  empleado: 'Empleado',
+  freelance: 'Freelance',
+  estudiando: 'Estudiando a tiempo completo',
+}
+
+const LEVEL_COLORS: Record<number, string> = {
+  1: 'bg-gray-100 text-gray-600',
+  2: 'bg-blue-50 text-blue-600',
+  3: 'bg-teal-50 text-[#00B5B5]',
+  4: 'bg-purple-50 text-purple-600',
+  5: 'bg-amber-50 text-amber-600',
+}
+function levelColor(id: number): string {
+  return LEVEL_COLORS[id] ?? 'bg-indigo-50 text-indigo-600'
+}
+
+const STRENGTH_LEVEL_COLORS: Record<string, string> = {
+  basico: 'bg-gray-100 text-gray-600',
+  intermedio: 'bg-blue-50 text-blue-600',
+  avanzado: 'bg-[#E6F8F8] text-[#007B7D]',
+}
+
+type StrengthEntry = { skill: string; level: string }
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default async function ProfilePage() {
+  const supabase = await createClient()
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  if (!authUser) redirect('/login')
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: authUser.id },
+    select: {
+      name: true,
+      email: true,
+      plan: true,
+      createdAt: true,
+      userStats: {
+        select: { currentStreakDays: true, totalCoursesCompleted: true, totalXp: true, lastActivityDate: true },
+      },
+      badges: {
+        include: { badge: { select: { name: true, iconUrl: true } } },
+        take: 4,
+      },
+      certificates: {
+        include: {
+          course: { select: { title: true } },
+          payments: { where: { status: 'pending' }, select: { id: true, status: true } },
+        },
+        orderBy: { issuedAt: 'desc' },
+        take: 5,
+      },
+      studentProfile: {
+        select: {
+          career: true, educationLevel: true, university: true,
+          academicYear: true, graduationYear: true,
+          hasWorkExperience: true, workExperienceYears: true,
+          jobRole: true, employmentStatus: true,
+          primaryGoal: true, timeline: true,
+          declaredStrengths: true,
+          weeklyHours: true, location: true, workModality: true,
+          assignedStartLevel: true, completedAt: true,
+        },
+      },
+    },
+  })
+
+  if (!dbUser) redirect('/login')
+
+  const profile = dbUser.studentProfile
+  let stats = dbUser.userStats
+  // Backfill: advance level for students who completed level courses before this feature existed
+  if ((stats?.totalCoursesCompleted ?? 0) > 0) {
+    await checkAndAdvanceLevel(authUser.id)
+    // Re-read the updated level from the profile
+    const refreshed = await prisma.studentProfile.findUnique({
+      where: { userId: authUser.id },
+      select: { assignedStartLevel: true },
+    })
+    if (refreshed && profile) profile.assignedStartLevel = refreshed.assignedStartLevel
+  }
+
+  const startLevel = profile?.assignedStartLevel ?? 1
+
+  const currentLevelData = await prisma.level.findUnique({
+    where: { id: startLevel },
+    select: { name: true, description: true },
+  })
+
+  // Backfill: ensure UserStats exists
+  if (!stats) {
+    const [completedCourses, completedLessons] = await Promise.all([
+      prisma.userCourseProgress.count({ where: { userId: authUser.id, status: 'completed' } }),
+      prisma.userLessonProgress.count({ where: { userId: authUser.id } }),
+    ])
+    const xp = completedCourses * 100 + completedLessons * 10
+    stats = await prisma.userStats.upsert({
+      where: { userId: authUser.id },
+      create: {
+        userId: authUser.id,
+        totalXp: xp,
+        currentStreakDays: 0,
+        longestStreak: 0,
+        totalCoursesCompleted: completedCourses,
+      },
+      update: {},
+      select: { currentStreakDays: true, totalCoursesCompleted: true, totalXp: true, lastActivityDate: true },
+    })
+  }
+
+  // Effective streak display (Duolingo-style)
+  const streakStatus = (() => {
+    if (!stats?.lastActivityDate || !stats.currentStreakDays) return 'new' as const
+    const today = new Date(); today.setUTCHours(0, 0, 0, 0)
+    const last = new Date(stats.lastActivityDate); last.setUTCHours(0, 0, 0, 0)
+    const diff = Math.round((today.getTime() - last.getTime()) / 86_400_000)
+    if (diff === 0) return 'active' as const
+    if (diff === 1) return 'frozen' as const
+    return 'broken' as const
+  })()
+  const displayStreak = streakStatus === 'broken' ? 0 : (stats?.currentStreakDays ?? 0)
+  const coursesCompleted = stats?.totalCoursesCompleted ?? 0
+  const levelName = currentLevelData?.name ?? `Nivel ${startLevel}`
+  const levelTitle = currentLevelData?.description ?? 'En Formación'
+  const isPremium = dbUser.plan !== 'bronce'
+  const memberYear = dbUser.createdAt ? new Date(dbUser.createdAt).getFullYear() : '—'
+  const strengths = (profile?.declaredStrengths as StrengthEntry[]) ?? []
+  const streak = displayStreak // kept for mobile mini-stat
+
+  // Backfill badges for users who completed content before this feature existed
+  let badgeList = dbUser.badges
+  if (badgeList.length === 0 && (stats?.totalXp ?? 0) > 0) {
+    await checkAndAwardBadges(authUser.id, { checkRouteComplete: true })
+    badgeList = await prisma.userBadge.findMany({
+      where: { userId: authUser.id },
+      include: { badge: { select: { name: true, iconUrl: true } } },
+      orderBy: { awardedAt: 'desc' },
+      take: 4,
+    })
+  }
+
+  const [certPriceSetting, activeAccountsRaw, rawCoupons] = await Promise.all([
+    prisma.appSetting.findUnique({ where: { key: 'certificate_price' } }),
+    prisma.paymentAccount.findMany({
+      where: { isActive: true },
+      orderBy: { displayOrder: 'asc' },
+      select: { id: true, method: true, label: true, details: true },
+    }),
+    prisma.certDiscount.findMany({
+      where: { userId: authUser.id, usedAt: null, paymentId: null, expiresAt: { gt: new Date() } },
+      select: { id: true, discountPct: true, expiresAt: true },
+      orderBy: { expiresAt: 'asc' },
+    }),
+  ])
+  const certPrice = certPriceSetting?.value ?? '5.00'
+  const activeAccounts = activeAccountsRaw.map(a => ({
+    ...a,
+    details: a.details as { phone?: string; bank?: string; ci?: string; holder?: string; network?: string; wallet?: string; email?: string },
+  }))
+  const availableCoupons = rawCoupons.map(c => ({
+    id: c.id,
+    discountPct: c.discountPct,
+    expiresAt: c.expiresAt.toISOString(),
+  }))
+
   return (
     <div className="min-h-screen">
       <DashboardHeader />
 
       <div className="px-4 md:px-6 pb-8 space-y-4">
-        <ProfileCard />
-        <StatsRow />
 
-        {/* Mobile-only upgrade CTA */}
-        <UpgradeCard />
+        {/* ── Profile card ── */}
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          {/* Desktop */}
+          <div className="hidden md:flex items-center gap-6 p-6 relative">
+            <div className="w-28 h-28 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+              <div className="w-full h-full bg-gradient-to-br from-slate-600 to-slate-900 flex items-center justify-center">
+                <svg className="w-14 h-14 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-xs font-bold tracking-widest text-[#00B5B5] uppercase mb-1 block">
+                Estudiante — {levelName}
+              </span>
+              <h1 className="text-2xl font-black text-gray-900 mb-2">{dbUser.name}</h1>
+              <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+                {profile?.location && (
+                  <span className="flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {profile.location}
+                  </span>
+                )}
+                <span className="flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Miembro desde {memberYear}
+                </span>
+                {profile?.career && (
+                  <span className="flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    {CAREER_LABELS[profile.career] ?? profile.career}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="hidden lg:flex w-28 h-28 items-end justify-center opacity-10 shrink-0">
+              <svg viewBox="0 0 80 100" className="w-full h-full fill-gray-400">
+                <ellipse cx="40" cy="28" rx="18" ry="18" />
+                <path d="M10 100 Q10 60 40 55 Q70 60 70 100 Z" />
+              </svg>
+            </div>
+            <button className="shrink-0 px-5 py-2.5 rounded-xl bg-[#1B4F8C] text-white text-sm font-semibold hover:bg-[#1A3C6E] transition-colors shadow-sm">
+              Editar Perfil
+            </button>
+          </div>
 
-        {/* Bottom section: desktop side-by-side, mobile stacked */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <BadgesSection />
-          <CertificatesSection />
+          {/* Mobile */}
+          <div className="md:hidden flex flex-col items-center py-8 px-6 gap-3">
+            <div className="relative">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-600 to-slate-900 flex items-center justify-center">
+                <svg className="w-10 h-10 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                </svg>
+              </div>
+              {isPremium && (
+                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-[#00B5B5] text-white text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wider">
+                  PREMIUM
+                </span>
+              )}
+            </div>
+            <div className="text-center">
+              <h1 className="text-xl font-black text-gray-900">{dbUser.name}</h1>
+              <p className="text-sm text-gray-400 mt-0.5">{dbUser.email}</p>
+            </div>
+            <div className="flex gap-px overflow-hidden rounded-xl border border-gray-100 w-full mt-1">
+              <div className="flex-1 py-3 text-center bg-gray-50">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Racha</p>
+                <p className="text-lg font-black text-gray-900">{streak} días</p>
+              </div>
+              <div className="flex-1 py-3 text-center bg-gray-50">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Nivel</p>
+                <p className="text-lg font-black text-gray-900">{levelName}</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Logout — mobile only */}
+        {/* ── Stats row (desktop) ── */}
+        <div className="hidden md:grid grid-cols-3 gap-4">
+          <div className={`relative rounded-2xl overflow-hidden text-white p-5 shadow-sm bg-gradient-to-br ${
+            streakStatus === 'active' ? 'from-orange-400 to-orange-600' :
+            streakStatus === 'frozen' ? 'from-sky-400 to-blue-600' :
+            'from-[#4B9BFB] to-[#1A5FD4]'
+          }`}>
+            <div className="absolute bottom-0 left-0 right-0 h-16 opacity-10">
+              <svg viewBox="0 0 300 60" className="w-full h-full" preserveAspectRatio="none">
+                <path d="M0 30 Q75 0 150 30 Q225 60 300 30 L300 60 L0 60 Z" fill="white" />
+              </svg>
+            </div>
+            <div className="flex items-center gap-2 mb-1">
+              <p className="font-bold text-sm">Racha de Aprendizaje</p>
+              {streakStatus === 'frozen' && (
+                <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-semibold">Congelada</span>
+              )}
+            </div>
+            <p className="text-white/70 text-xs mb-4">
+              {streakStatus === 'active'
+                ? `Has mantenido tu ritmo por ${displayStreak} ${displayStreak === 1 ? 'dia' : 'dias'} consecutivos.`
+                : streakStatus === 'frozen'
+                  ? 'Completa una leccion hoy para mantener tu racha.'
+                  : 'Empieza hoy tu racha de aprendizaje.'}
+            </p>
+            <div className="flex items-end gap-3">
+              <p className="text-5xl font-black">{displayStreak}<span className="text-xl font-semibold ml-2">dias</span></p>
+              <span className="text-3xl mb-1">{streakStatus === 'active' ? '🔥' : streakStatus === 'frozen' ? '🧊' : '🔥'}</span>
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-white p-5 flex flex-col items-center justify-center gap-2 shadow-sm">
+            <div className="w-12 h-12 rounded-full bg-[#E6F8F8] flex items-center justify-center">
+              <svg className="w-6 h-6 text-[#00B5B5]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <p className="text-4xl font-black text-gray-900">{coursesCompleted}</p>
+            <p className="text-sm text-gray-500">Cursos Completados</p>
+          </div>
+
+          <div className="rounded-2xl bg-white p-5 flex flex-col items-center justify-center gap-2 shadow-sm">
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${levelColor(startLevel)}`}>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+              </svg>
+            </div>
+            <p className="text-4xl font-black text-gray-900">{levelName}</p>
+            <p className="text-sm text-gray-500">{levelTitle}</p>
+          </div>
+        </div>
+
+        {/* ── Onboarding summary ── */}
+        {profile && (
+          <div className="bg-white rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="font-bold text-gray-900">Mi perfil de aprendizaje</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Información recolectada durante tu onboarding</p>
+              </div>
+              <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
+                {levelName} — {levelTitle}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+              <InfoRow icon="🎓" label="Carrera" value={CAREER_LABELS[profile.career] ?? profile.career} />
+              <InfoRow icon="📚" label="Nivel educativo" value={EDUCATION_LABELS[profile.educationLevel] ?? profile.educationLevel} />
+              {profile.university && <InfoRow icon="🏛️" label="Universidad" value={profile.university} />}
+              {profile.academicYear && <InfoRow icon="📅" label="Año / semestre" value={profile.academicYear} />}
+              {profile.graduationYear && <InfoRow icon="🎉" label="Año de graduación" value={String(profile.graduationYear)} />}
+              <InfoRow icon="💼" label="Situación actual" value={STATUS_LABELS[profile.employmentStatus] ?? profile.employmentStatus} />
+              {profile.hasWorkExperience && profile.workExperienceYears != null && (
+                <InfoRow icon="⏱️" label="Experiencia laboral" value={`${profile.workExperienceYears} ${profile.workExperienceYears === 1 ? 'año' : 'años'}`} />
+              )}
+              {profile.jobRole && <InfoRow icon="🏷️" label="Cargo / rol" value={profile.jobRole} />}
+              <InfoRow icon="🎯" label="Objetivo principal" value={GOAL_LABELS[profile.primaryGoal] ?? profile.primaryGoal} />
+              <InfoRow icon="⏳" label="Plazo de tiempo" value={TIMELINE_LABELS[profile.timeline] ?? profile.timeline} />
+              <InfoRow icon="🕐" label="Disponibilidad" value={HOURS_LABELS[profile.weeklyHours] ?? profile.weeklyHours} />
+              <InfoRow icon="📍" label="Ubicación" value={profile.location} />
+              <InfoRow icon="🖥️" label="Modalidad" value={MODALITY_LABELS[profile.workModality] ?? profile.workModality} />
+            </div>
+
+            {strengths.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Fortalezas declaradas</p>
+                <div className="flex flex-wrap gap-2">
+                  {strengths.map((s) => (
+                    <span key={s.skill}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${STRENGTH_LEVEL_COLORS[s.level] ?? 'bg-gray-100 text-gray-600'}`}>
+                      {s.skill}
+                      <span className="opacity-60 font-normal capitalize">{s.level}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Badges & Certificates ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Badges */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-gray-900">Insignias Logradas</h2>
+              <button className="text-sm text-[#00B5B5] font-semibold hover:underline">Ver todos</button>
+            </div>
+            {badgeList.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-gray-300">
+                <svg className="w-10 h-10 mb-2" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                </svg>
+                <p className="text-sm font-medium text-gray-400">Aún sin insignias</p>
+                <p className="text-xs text-gray-300 mt-1">Completa cursos para ganarlas</p>
+              </div>
+            ) : (
+              <div className="flex gap-5 flex-wrap">
+                {badgeList.map((ub) => (
+                  <div key={ub.id} className="flex flex-col items-center gap-2">
+                    <div className="w-14 h-14 rounded-full bg-[#E6F8F8] flex items-center justify-center">
+                      <span className="text-3xl">{ub.badge.iconUrl ?? '🏅'}</span>
+                    </div>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-600 text-center max-w-[70px]">{ub.badge.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Certificates */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-gray-900">Certificados</h2>
+            </div>
+            <CertificatesSection
+              certs={dbUser.certificates}
+              certPrice={certPrice}
+              paymentAccounts={activeAccounts}
+              availableCoupons={availableCoupons}
+            />
+          </div>
+        </div>
+
+        {/* Mobile upgrade CTA */}
+        {!isPremium && (
+          <div className="md:hidden rounded-2xl bg-gradient-to-br from-[#1B6EF5] to-[#0A4BCC] text-white p-5">
+            <p className="font-black text-base uppercase tracking-wide mb-1">Desbloquea el Mapa Completo</p>
+            <p className="text-white/75 text-xs leading-relaxed mb-4">
+              Acceso a certificados oficiales, mentoría 1:1 y contenido exclusivo.
+            </p>
+            <button className="w-full py-3 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-sm transition-colors">
+              Actualizar a Premium
+            </button>
+          </div>
+        )}
+
+        {/* Mobile logout */}
         <form action={logoutAction} className="md:hidden">
-          <button
-            type="submit"
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border border-red-200 text-red-500 text-sm font-semibold hover:bg-red-50 transition-colors duration-150"
-          >
+          <button type="submit" className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border border-red-200 text-red-500 text-sm font-semibold hover:bg-red-50 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             Cerrar sesión
           </button>
         </form>
+
+      </div>
+    </div>
+  )
+}
+
+// ─── Helper ───────────────────────────────────────────────────────────────────
+
+function InfoRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-3 px-3 py-2.5 rounded-xl bg-gray-50">
+      <span className="text-base shrink-0 mt-0.5">{icon}</span>
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{label}</p>
+        <p className="text-sm font-medium text-gray-800 mt-0.5">{value}</p>
       </div>
     </div>
   )

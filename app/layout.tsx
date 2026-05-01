@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Nunito } from "next/font/google";
 import "./globals.css";
 import SWRegister from "./components/SWRegister"; // <-- Importa el componente cliente
@@ -22,12 +22,13 @@ export const metadata: Metadata = {
   description:
     "Plataforma EdTech venezolana que te prepara para el mercado laboral con rutas de aprendizaje personalizadas por IA y gamificación.",
   manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
   themeColor: "#000000",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    viewportFit: "cover",
-  },
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

@@ -3,7 +3,7 @@ export interface User {
   email: string
   name: string
   role: 'estudiante' | 'docente' | 'admin'
-  subscription: 'freemium' | 'premium'
+  plan: 'bronce' | 'plata' | 'oro'
   setupStatus?: 'pending' | 'active'
   isActive?: boolean
   avatarUrl?: string

@@ -1,214 +1,228 @@
-// app/admin/courses/[id]/edit/page.tsx
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import Link from 'next/link';
+import { useEffect, useState } from 'react'
+import { useRouter, useParams } from 'next/navigation'
+import Link from 'next/link'
 
-interface Level {
-  id: number;
-  name: string;
-}
+interface Level { id: number; name: string }
 
-interface CourseData {
-  id: string;
-  title: string;
-  description: string | null;
-  levelId: number;
-  isRequired: boolean;
-  duration: string | null;
-  thumbnailUrl: string | null;
-  skillsTags: string[];
-  isPublished: boolean;
-}
+const CAREERS = [
+  { value: 'contaduria', label: 'Contaduría' },
+  { value: 'sistemas', label: 'Sistemas' },
+]
+
+const inputCls = 'w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00B5B5]/30 focus:border-[#00B5B5] transition-all bg-white'
+const labelCls = 'block text-sm font-medium text-gray-700 mb-1.5'
 
 export default function EditCoursePage() {
-  const router = useRouter();
-  const params = useParams();
-  const id = params.id as string;
+  const router = useRouter()
+  const params = useParams()
+  const id = params.id as string
 
-  const [levels, setLevels] = useState<Level[]>([]);
+  const [levels, setLevels] = useState<Level[]>([])
   const [form, setForm] = useState({
     title: '',
     description: '',
     levelId: 1,
-    isRequired: true,
+    careers: [] as string[],
     duration: '',
     thumbnailUrl: '',
     skillsTags: [] as string[],
     isPublished: false,
-  });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!id) return;
-
+    if (!id) return
     Promise.all([
-      fetch('/api/levels').then((res) => res.json() as Promise<Level[]>),
-      fetch(`/api/admin/courses/${id}`).then((res) => res.json() as Promise<CourseData>),
-    ])
-      .then(([levelsData, course]) => {
-        setLevels(levelsData);
-        setForm({
-          title: course.title,
-          description: course.description ?? '',
-          levelId: course.levelId,
-          isRequired: course.isRequired,
-          duration: course.duration ?? '',
-          thumbnailUrl: course.thumbnailUrl ?? '',
-          skillsTags: course.skillsTags ?? [],
-          isPublished: course.isPublished,
-        });
-        setLoading(false);
+      fetch('/api/levels').then((r) => r.json() as Promise<Level[]>),
+      fetch(`/api/admin/courses/${id}`).then((r) => r.json()),
+    ]).then(([lvls, course]) => {
+      setLevels(lvls)
+      setForm({
+        title: course.title ?? '',
+        description: course.description ?? '',
+        levelId: course.levelId ?? 1,
+        careers: course.careers ?? [],
+        duration: course.duration ?? '',
+        thumbnailUrl: course.thumbnailUrl ?? '',
+        skillsTags: course.skillsTags ?? [],
+        isPublished: course.isPublished ?? false,
       })
-      .catch((err) => {
-        console.error(err);
-        setLoading(false);
-      });
-  }, [id]);
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [id])
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value, type } = e.target;
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
+    const { name, value, type } = e.target
     if (type === 'checkbox') {
-      const checked = (e.target as HTMLInputElement).checked;
-      setForm((prev) => ({ ...prev, [name]: checked }));
+      setForm((prev) => ({ ...prev, [name]: (e.target as HTMLInputElement).checked }))
     } else {
-      setForm((prev) => ({ ...prev, [name]: value }));
+      setForm((prev) => ({ ...prev, [name]: value }))
     }
-  };
+  }
 
-  const handleSkillsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const tags = e.target.value.split(',').map((t) => t.trim());
-    setForm((prev) => ({ ...prev, skillsTags: tags }));
-  };
+  function handleCareerToggle(career: string) {
+    setForm((prev) => ({
+      ...prev,
+      careers: prev.careers.includes(career)
+        ? prev.careers.filter((c) => c !== career)
+        : [...prev.careers, career],
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!id) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/admin/courses/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) throw new Error('Error al actualizar curso');
-      router.push('/admin/courses');
-    } catch (err) {
-      console.error(err);
-      alert('Error al guardar cambios');
-      setSaving(false);
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+    const res = await fetch(`/api/admin/courses/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    })
+    if (res.ok) {
+      router.push('/admin/courses')
+    } else {
+      const data = await res.json().catch(() => ({}))
+      setError(data.error ?? 'Error al guardar los cambios.')
+      setSaving(false)
     }
-  };
+  }
 
-  if (loading) return <div className="p-8 text-black">Cargando...</div>;
-  if (!id) return <div className="p-8 text-black">ID de curso no válido</div>;
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="bg-white rounded-2xl border border-gray-100 flex items-center justify-center py-16">
+          <p className="text-sm text-gray-400">Cargando curso...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
-      <h1 className="text-2xl font-bold text-black mb-4">Editar Curso</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-black font-medium mb-1">Título *</label>
-          <input
-            type="text"
-            name="title"
-            required
-            value={form.title}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded p-2 text-black bg-white"
-          />
+    <div className="p-8">
+      <div className="mb-6">
+        <Link
+          href="/admin/courses"
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-4"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+          </svg>
+          Volver a cursos
+        </Link>
+        <h1 className="text-xl font-bold text-gray-900">Editar curso</h1>
+      </div>
+
+      {error && (
+        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">
+          {error}
         </div>
-        <div>
-          <label className="block text-black font-medium mb-1">Descripción</label>
-          <textarea
-            name="description"
-            rows={4}
-            value={form.description}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded p-2 text-black bg-white"
-          />
-        </div>
-        <div>
-          <label className="block text-black font-medium mb-1">Nivel</label>
-          <select
-            name="levelId"
-            value={form.levelId}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded p-2 text-black bg-white"
-          >
-            {levels.map((level) => (
-              <option key={level.id} value={level.id}>{level.name}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-black font-medium mb-1">Duración (ej: 2h 30m)</label>
-          <input
-            type="text"
-            name="duration"
-            value={form.duration}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded p-2 text-black bg-white"
-          />
-        </div>
-        <div>
-          <label className="block text-black font-medium mb-1">URL de miniatura</label>
-          <input
-            type="text"
-            name="thumbnailUrl"
-            value={form.thumbnailUrl}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded p-2 text-black bg-white"
-          />
-        </div>
-        <div>
-          <label className="block text-black font-medium mb-1">Habilidades (separadas por coma)</label>
-          <input
-            type="text"
-            value={form.skillsTags.join(', ')}
-            onChange={handleSkillsChange}
-            className="w-full border border-gray-300 rounded p-2 text-black bg-white"
-          />
-        </div>
-        <div className="flex gap-4">
-          <label className="flex items-center gap-1 text-black">
+      )}
+
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 max-w-2xl">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <div>
+            <label className={labelCls}>Título *</label>
+            <input type="text" name="title" required value={form.title} onChange={handleChange} className={inputCls} />
+          </div>
+
+          <div>
+            <label className={labelCls}>Descripción</label>
+            <textarea name="description" rows={4} value={form.description} onChange={handleChange} className={inputCls} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Nivel</label>
+              <select name="levelId" value={form.levelId} onChange={handleChange} className={inputCls}>
+                {levels.map((l) => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Duración</label>
+              <input type="text" name="duration" value={form.duration} onChange={handleChange} placeholder="Ej: 2h 30m" className={inputCls} />
+            </div>
+          </div>
+
+          <div>
+            <label className={labelCls}>Carreras</label>
+            <div className="flex gap-3">
+              {CAREERS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => handleCareerToggle(value)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                    form.careers.includes(value)
+                      ? 'bg-[#E6F8F8] border-[#00B5B5] text-[#00B5B5]'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                    form.careers.includes(value) ? 'bg-[#00B5B5] border-[#00B5B5]' : 'border-gray-300'
+                  }`}>
+                    {form.careers.includes(value) && (
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    )}
+                  </span>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className={labelCls}>Habilidades (separadas por coma)</label>
             <input
-              type="checkbox"
-              name="isRequired"
-              checked={form.isRequired}
-              onChange={handleChange}
-              className="text-black"
+              type="text"
+              value={form.skillsTags.join(', ')}
+              onChange={(e) => setForm((p) => ({ ...p, skillsTags: e.target.value.split(',').map((t) => t.trim()) }))}
+              placeholder="Ej: Excel, Finanzas, Contabilidad básica"
+              className={inputCls}
             />
-            Curso obligatorio
-          </label>
-          <label className="flex items-center gap-1 text-black">
-            <input
-              type="checkbox"
-              name="isPublished"
-              checked={form.isPublished}
-              onChange={handleChange}
-              className="text-black"
-            />
-            Publicado
-          </label>
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-          >
-            {saving ? 'Guardando...' : 'Guardar cambios'}
-          </button>
-          <Link href="/admin/courses" className="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400">
-            Cancelar
-          </Link>
-        </div>
-      </form>
+          </div>
+
+          <div>
+            <label className={labelCls}>URL de miniatura</label>
+            <input type="text" name="thumbnailUrl" value={form.thumbnailUrl} onChange={handleChange} placeholder="https://..." className={inputCls} />
+          </div>
+
+          <div className="flex gap-5 pt-1">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <div
+                onClick={() => setForm((p) => ({ ...p, isPublished: !p.isPublished }))}
+                className={`w-9 h-5 rounded-full transition-colors ${form.isPublished ? 'bg-[#00B5B5]' : 'bg-gray-200'}`}
+              >
+                <div className="w-4 h-4 bg-white rounded-full shadow mt-0.5 transition-transform" style={{ transform: form.isPublished ? 'translateX(18px)' : 'translateX(2px)' }} />
+              </div>
+              <span className="text-sm text-gray-700">Publicado</span>
+            </label>
+          </div>
+
+          <div className="flex gap-3 pt-2 border-t border-gray-100">
+            <Link
+              href="/admin/courses"
+              className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all text-center"
+            >
+              Cancelar
+            </Link>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 py-2.5 rounded-xl bg-[#00B5B5] hover:bg-[#009999] text-white text-sm font-semibold transition-all disabled:opacity-60"
+            >
+              {saving ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
-  );
+  )
 }

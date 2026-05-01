@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { User } from '@/domain/entities/user.entity'
 
+const PAGE_SIZE = 10
+
 interface Props {
   title: string
   singularLabel: string
@@ -21,6 +23,7 @@ export default function UsersTableClient({
   canToggleActive = false,
 }: Props) {
   const [users, setUsers] = useState<User[]>(initialUsers)
+  const [page, setPage] = useState(0)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [formData, setFormData] = useState({ name: '', email: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -129,6 +132,9 @@ export default function UsersTableClient({
   }
 
   const count = users.length
+  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages - 1)
+  const paged = users.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE)
 
   return (
     <div className="p-8">
@@ -179,7 +185,7 @@ export default function UsersTableClient({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {users.map((user) => {
+              {paged.map((user) => {
                 const isPending = user.setupStatus === 'pending'
                 const isInactive = !isPending && user.isActive === false
                 const showToggle = canToggleActive && !isPending
@@ -274,6 +280,27 @@ export default function UsersTableClient({
               })}
             </tbody>
           </table>
+        )}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
+            <p className="text-xs text-gray-400">Pag. {safePage + 1} de {totalPages}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={safePage === 0}
+                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={safePage >= totalPages - 1}
+                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
         )}
       </div>
 

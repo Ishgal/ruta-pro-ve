@@ -1,19 +1,20 @@
-// next.config.ts
 import type { NextConfig } from 'next';
-
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const withPWA = require('next-pwa');
 
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: process.cwd(),
   reactStrictMode: true,
   images: {
-    domains: ['your-s3-bucket.s3.amazonaws.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.amazonaws.com',
+      },
+    ],
   },
   typescript: {
-    ignoreBuildErrors: true,   // Evita que errores de tipo bloquee el build
-  },
-  turbopack: {
-    root: process.cwd(),
+    ignoreBuildErrors: true,
   },
 };
 

@@ -32,13 +32,22 @@ const navItems = [
       </svg>
     ),
   },
+  {
+    href: '/dashboard/payments',
+    label: 'Pagos',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+      </svg>
+    ),
+  },
 ]
 
 export default function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="hidden md:flex flex-col w-56 shrink-0 bg-white border-r border-gray-100 min-h-screen px-4 py-6">
+    <aside className="hidden md:flex flex-col w-56 shrink-0 bg-white border-r border-gray-100 h-full px-4 py-6">
       {/* Logo */}
       <div className="mb-8 px-2">
         <span className="text-[#00B5B5] font-black text-xl tracking-tight">RUTA PRO</span>
@@ -80,13 +89,13 @@ export default function Sidebar() {
         </button>
       </form>
 
-      {/* Pro Plan card */}
-      <div className="rounded-2xl bg-[#007B7D] px-4 py-5 text-white">
-        <p className="font-bold text-sm tracking-wide mb-1">PRO PLAN</p>
+      {/* Upgrade card */}
+      <Link href="/dashboard/plans" className="rounded-2xl bg-[#007B7D] px-4 py-5 text-white block hover:bg-[#006364] transition-colors">
+        <p className="font-bold text-sm tracking-wide mb-1">Mejora tu plan</p>
         <p className="text-xs text-white/80 leading-snug">
-          Desbloquea todo el contenido ahora.
+          Sin anuncios, descuentos en certificados y mentoria.
         </p>
-      </div>
+      </Link>
     </aside>
   )
 }

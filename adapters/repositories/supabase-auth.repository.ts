@@ -28,7 +28,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
       email: result.user.email!,
       name: data.name,
       role: 'estudiante',
-      subscription: 'freemium',
+      plan: 'bronce',
     }
 
     return { user, error: null }
@@ -48,7 +48,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
       email: result.user.email!,
       name: result.user.user_metadata?.name ?? '',
       role: (result.user.user_metadata?.role ?? 'estudiante') as User['role'],
-      subscription: 'freemium',
+      plan: 'bronce',
     }
 
     return { user, error: null }

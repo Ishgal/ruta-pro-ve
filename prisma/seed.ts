@@ -101,7 +101,6 @@ async function main() {
           title: courseData.title,
           description: courseData.description,
           levelId: courseData.levelId,
-          isRequired: courseData.isRequired,
           duration: courseData.duration,
           thumbnailUrl: courseData.thumbnailUrl,
           skillsTags: courseData.skillsTags,
@@ -115,7 +114,6 @@ async function main() {
         data: {
           description: courseData.description,
           levelId: courseData.levelId,
-          isRequired: courseData.isRequired,
           duration: courseData.duration,
           thumbnailUrl: courseData.thumbnailUrl,
           skillsTags: courseData.skillsTags,

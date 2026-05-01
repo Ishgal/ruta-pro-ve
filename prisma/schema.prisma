@@ -25,21 +25,22 @@ enum SetupStatus {
   active
 }
 
-enum SubscriptionType {
-  freemium
-  premium
+enum PlanTier {
+  bronce
+  plata
+  oro
+}
+
+enum SubscriptionStatus {
+  active
+  cancelled
+  expired
 }
 
 enum ProgressStatus {
   not_started
   in_progress
   completed
-}
-
-enum MedalType {
-  course
-  level
-  special
 }
 
 enum PaymentMethod {
@@ -72,35 +73,45 @@ enum SkillSource {
   course
 }
 
+enum LessonType {
+  video
+  article
+  quiz
+  slides
+}
+
 // ============================================================================
 // 1. TABLAS PRINCIPALES (USUARIOS Y AUTENTICACIÓN)
 // ============================================================================
 
 model User {
-  id            String           @id @default(uuid()) @db.Uuid
-  email         String           @unique @db.VarChar(255)
-  name          String           @db.VarChar(255)
-  role          Role             @default(estudiante)
-  subscription  SubscriptionType @default(freemium)
-  premiumUntil  DateTime?        @map("premium_until") @db.Timestamp()
-  linkedinId    String?          @map("linkedin_id") @db.VarChar(255)
-  avatarUrl     String?          @map("avatar_url") @db.VarChar(500)
-  lastSignInAt  DateTime?        @map("last_sign_in_at") @db.Timestamp()
-  setupStatus   SetupStatus      @default(active) @map("setup_status")
-  isActive      Boolean          @default(true) @map("is_active")
-  createdAt     DateTime?        @default(now()) @map("created_at") @db.Timestamp()
-  updatedAt     DateTime?        @default(now()) @updatedAt @map("updated_at") @db.Timestamp()
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique @db.VarChar(255)
+  name         String    @db.VarChar(255)
+  role         Role      @default(estudiante)
+  plan         PlanTier  @default(bronce)
+  linkedinId   String?   @map("linkedin_id") @db.VarChar(255)
+  avatarUrl    String?   @map("avatar_url") @db.VarChar(500)
+  lastSignInAt DateTime? @map("last_sign_in_at") @db.Timestamp()
+  setupStatus  SetupStatus @default(active) @map("setup_status")
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamp()
+  updatedAt    DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamp()
 
   // Relaciones
   teacherProfile   Teacher?
+  studentProfile   StudentProfile?
   userStats        UserStats?
   courseProgress   UserCourseProgress[]
+  lessonProgress   UserLessonProgress[]
+  examAttempts     ExamAttempt[]
   levelCompletions LevelCompletion[]
-  medals           Medal[]
   badges           UserBadge[]
   certificates     Certificate[]
   payments         Payment[]
   skills           UserSkill[]
+  subscriptions    Subscription[]
+  certDiscounts    CertDiscount[]
 
   @@map("users")
 }
@@ -153,16 +164,16 @@ model Course {
   description  String?   @db.Text
   levelId      Int       @map("level_id")
   level        Level     @relation(fields: [levelId], references: [id])
-  isRequired   Boolean?  @default(true) @map("is_required")
   duration     String?   @db.VarChar(50)
   thumbnailUrl String?   @map("thumbnail_url") @db.VarChar(500)
   skillsTags   String[]  @map("skills_tags")
+  careers      String[]  @default([]) @map("careers")
   createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamp()
   isPublished  Boolean?  @default(false) @map("is_published")
 
   lessons            Lesson[]
   userProgress       UserCourseProgress[]
-  medals             Medal[]
+  examAttempts       ExamAttempt[]
   certificates       Certificate[]
   teacherAssignments TeacherAssignment[]
 
@@ -179,9 +190,13 @@ model Lesson {
   content       String?  @db.Text
   displayOrder  Int      @map("display_order")
   duration      String?  @db.VarChar(50)
-  isFreePreview Boolean? @default(false) @map("is_free_preview")
+  isFreePreview Boolean?    @default(false) @map("is_free_preview")
+  lessonType    LessonType  @default(video) @map("lesson_type")
+  slidesUrl     String?     @map("slides_url") @db.VarChar(500)
+  quizData      Json?       @map("quiz_data")
 
-  progress UserCourseProgress[]
+  progress       UserCourseProgress[]
+  lessonProgress UserLessonProgress[]
 
   @@index([courseId], name: "idx_lessons_course_id")
   @@map("lessons")
@@ -226,20 +241,8 @@ model LevelCompletion {
 }
 
 // ============================================================================
-// 4. MEDALLAS Y BADGES (GAMIFICACIÓN)
+// 4. BADGES (GAMIFICACIÓN)
 // ============================================================================
-
-model Medal {
-  id        String     @id @default(uuid()) @db.Uuid
-  userId    String     @map("user_id") @db.Uuid
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  courseId  String     @map("course_id") @db.Uuid
-  course    Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  awardedAt DateTime?  @default(now()) @map("awarded_at") @db.Timestamp()
-  medalType MedalType? @default(course) @map("medal_type")
-
-  @@map("medals")
-}
 
 model Badge {
   id             String  @id @default(uuid()) @db.Uuid
@@ -281,6 +284,8 @@ model Certificate {
   issuedAt          DateTime? @default(now()) @map("issued_at") @db.Timestamp()
   verificationCount Int?      @default(0) @map("verification_count")
 
+  payments Payment[]
+
   @@unique([userId, courseId])
   @@index([qrCode], name: "idx_certificates_qr_code")
   @@map("certificates")
@@ -308,24 +313,135 @@ model TeacherAssignment {
 // ============================================================================
 
 model Payment {
-  id            String         @id @default(uuid()) @db.Uuid
-  userId        String         @map("user_id") @db.Uuid
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  amount        Decimal        @db.Decimal(10, 2)
-  method        PaymentMethod
-  status        PaymentStatus? @default(pending)
-  transactionId String?        @map("transaction_id") @db.VarChar(255)
-  paidAt        DateTime?      @map("paid_at") @db.Timestamp()
-  expiresAt     DateTime?      @map("expires_at") @db.Timestamp()
-  createdAt     DateTime?      @default(now()) @map("created_at") @db.Timestamp()
+  id             String        @id @default(uuid()) @db.Uuid
+  userId         String        @map("user_id") @db.Uuid
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  certificateId  String?       @map("certificate_id") @db.Uuid
+  certificate    Certificate?  @relation(fields: [certificateId], references: [id])
+  subscriptionId String?       @map("subscription_id") @db.Uuid
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  amount         Decimal       @db.Decimal(10, 2)
+  originalAmount Decimal?      @map("original_amount") @db.Decimal(10, 2)
+  method         PaymentMethod
+  status         PaymentStatus? @default(pending)
+  transactionId  String?       @map("transaction_id") @db.VarChar(255)
+  paymentDate    DateTime?     @map("payment_date") @db.Timestamp()
+  exchangeRate   Decimal?      @map("exchange_rate") @db.Decimal(12, 2)
+  amountBs       Decimal?      @map("amount_bs") @db.Decimal(14, 2)
+  paidAt         DateTime?     @map("paid_at") @db.Timestamp()
+  createdAt      DateTime?     @default(now()) @map("created_at") @db.Timestamp()
+  certDiscount   CertDiscount?
 
   @@index([userId], name: "idx_payments_user_id")
   @@index([status], name: "idx_payments_status")
   @@map("payments")
 }
 
+model Subscription {
+  id        String             @id @default(uuid()) @db.Uuid
+  userId    String             @map("user_id") @db.Uuid
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan      PlanTier
+  status    SubscriptionStatus @default(active)
+  startedAt DateTime           @default(now()) @map("started_at") @db.Timestamp()
+  expiresAt DateTime?          @map("expires_at") @db.Timestamp()
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamp()
+  payments  Payment[]
+
+  @@map("subscriptions")
+}
+
+model CertDiscount {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  discountPct Int       @map("discount_pct")
+  usedAt      DateTime? @map("used_at") @db.Timestamp()
+  expiresAt   DateTime  @map("expires_at") @db.Timestamp()
+  paymentId   String?   @unique @map("payment_id") @db.Uuid
+  payment     Payment?  @relation(fields: [paymentId], references: [id])
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp()
+
+  @@map("cert_discounts")
+}
+
 // ============================================================================
-// 8. IA Y HABILIDADES
+// 8. PERFIL DE ONBOARDING DEL ESTUDIANTE
+// ============================================================================
+
+model StudentProfile {
+  userId String @id @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Fase 1 — Identidad
+  educationLevel String  @map("education_level") @db.VarChar(50)
+  career         String  @db.VarChar(50)
+  university     String? @db.VarChar(255)
+  academicYear   String? @map("academic_year") @db.VarChar(50)
+  graduationYear Int?    @map("graduation_year")
+
+  // Fase 1 — Experiencia
+  hasWorkExperience   Boolean @map("has_work_experience")
+  workExperienceYears Int?    @map("work_experience_years")
+  jobRole             String? @map("job_role") @db.VarChar(255)
+  employmentStatus    String  @map("employment_status") @db.VarChar(50)
+
+  // Fase 1 — Objetivos
+  primaryGoal String @map("primary_goal") @db.VarChar(50)
+  timeline    String @db.VarChar(50)
+
+  // Fase 1 — Fortalezas declaradas con nivel [{skill, level}]
+  declaredStrengths Json @default("[]") @map("declared_strengths")
+
+  // Fase 1 — Contexto de aprendizaje
+  weeklyHours  String @map("weekly_hours") @db.VarChar(50)
+  location     String @db.VarChar(100)
+  workModality String @map("work_modality") @db.VarChar(50)
+
+  // Fase 2 — CV
+  cvUrl           String? @map("cv_url") @db.VarChar(500)
+  cvAnalysisNotes String? @map("cv_analysis_notes") @db.Text
+
+  // Fase 3 — IA conversacional
+  onboardingChat      Json?   @map("onboarding_chat")
+  aiProfileSummary    String? @map("ai_profile_summary") @db.Text
+  knowledgeAssessment Json?   @map("knowledge_assessment")
+
+  // Resultado generado por la IA
+  generatedRoute     Json?     @map("generated_route")
+  assignedStartLevel Int       @default(1) @map("assigned_start_level")
+  completedAt        DateTime? @map("completed_at") @db.Timestamp()
+
+  @@map("student_profiles")
+}
+
+// ============================================================================
+// 9. CONFIGURACIÓN DE LA PLATAFORMA
+// ============================================================================
+
+model AppSetting {
+  key       String    @id @db.VarChar(100)
+  value     String    @db.Text
+  label     String?   @db.VarChar(255)
+  updatedAt DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamp()
+
+  @@map("app_settings")
+}
+
+model PaymentAccount {
+  id           String    @id @default(uuid()) @db.Uuid
+  method       String    @db.VarChar(50)
+  label        String    @db.VarChar(100)
+  isActive     Boolean   @default(true) @map("is_active")
+  details      Json      @default("{}")
+  displayOrder Int       @default(0) @map("display_order")
+  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamp()
+
+  @@map("payment_accounts")
+}
+
+// ============================================================================
+// 10. IA Y HABILIDADES
 // ============================================================================
 
 model Skill {
@@ -351,4 +467,38 @@ model UserSkill {
   @@unique([userId, skillId, source])
   @@index([userId], name: "idx_user_skills_user_id")
   @@map("user_skills")
+}
+
+// ============================================================================
+// 11. PROGRESO POR LECCIÓN Y EXÁMENES FINALES
+// ============================================================================
+
+model UserLessonProgress {
+  userId      String   @map("user_id") @db.Uuid
+  lessonId    String   @map("lesson_id") @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completedAt DateTime @map("completed_at") @db.Timestamp()
+
+  @@id([userId, lessonId])
+  @@index([userId], name: "idx_user_lesson_progress_user_id")
+  @@map("user_lesson_progress")
+}
+
+model ExamAttempt {
+  id          String    @id @default(uuid()) @db.Uuid
+  courseId    String    @map("course_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examData    Json      @map("exam_data")
+  answers     Json?
+  score       Int?
+  passed      Boolean   @default(false)
+  startedAt   DateTime  @default(now()) @map("started_at") @db.Timestamp()
+  completedAt DateTime? @map("completed_at") @db.Timestamp()
+
+  @@index([userId], name: "idx_exam_attempts_user_id")
+  @@index([courseId, userId], name: "idx_exam_attempts_course_user")
+  @@map("exam_attempts")
 }
