@@ -185,21 +185,44 @@ export async function POST(request: NextRequest) {
     let newTeacher;
     
     if (existingPrismaUser) {
-      console.log('📝 Usuario ya existe en Prisma, actualizando...');
-      newTeacher = existingPrismaUser;
+      console.log('📝 Usuario ya existe en Prisma, actualizando rol a docente...');
+      // IMPORTANTE: Actualizar el rol a 'docente'
+      newTeacher = await prisma.user.update({
+        where: { id: userId },
+        data: { 
+          role: 'docente',
+          name: name // También actualizamos el nombre por si acaso
+        }
+      });
+      
+      // Verificar si tiene perfil de Teacher
+      const existingTeacherProfile = await prisma.teacher.findUnique({
+        where: { id: userId }
+      });
+      
+      if (!existingTeacherProfile) {
+        console.log('👨‍🏫 Creando perfil de Teacher (no existía)...');
+        await prisma.teacher.create({
+          data: {
+            id: userId,
+            specialty: []
+          }
+        });
+      }
     } else {
-      console.log('➕ Creando usuario en Prisma...');
+      console.log('➕ Creando usuario en Prisma con rol DOCENTE...');
+      // IMPORTANTE: Crear con role = 'docente'
       newTeacher = await prisma.user.create({
         data: {
           id: userId,
           email: email,
           name: name,
-          role: 'docente',
+          role: 'docente', // ← FORZAR rol docente
           setupStatus: 'pending',
           isActive: true
         }
       });
-      console.log('✅ Usuario creado en Prisma, ID:', newTeacher.id);
+      console.log('✅ Usuario DOCENTE creado en Prisma, ID:', newTeacher.id);
 
       console.log('👨‍🏫 Creando perfil de Teacher...');
       await prisma.teacher.create({
@@ -211,27 +234,12 @@ export async function POST(request: NextRequest) {
       console.log('✅ Perfil de Teacher creado');
     }
 
-    // Generar el enlace manualmente usando un token temporal
-    // En lugar de usar el enlace de Supabase, creamos un token y lo guardamos en la base de datos
-    console.log('🔗 Generando token de invitación manual...');
-    
-    // Generar un token único
-    const token = randomBytes(32).toString('hex');
-    const tokenExpiresAt = new Date();
-    tokenExpiresAt.setHours(tokenExpiresAt.getHours() + 24); // Expira en 24 horas
-    
-    // Guardar el token en la tabla del usuario (necesitas agregar un campo en Prisma para esto)
-    // Por ahora, usaremos un enfoque temporal: construimos el enlace con el ID del usuario
-    // y usaremos la verificación de Supabase
-    
-    // Construir el enlace local hacia tu aplicación
-    // Nota: Supabase requiere que el token se verifique en su dominio, así que usamos el enlace de Supabase
-    // pero extraemos el token y lo pasamos a nuestra URL
+    // Generar el enlace de invitación
+    console.log('🔗 Generando enlace de invitación...');
     
     let inviteLink: string;
     
     if (isExistingAuthUser) {
-      // Generar enlace de recuperación y extraer el token
       const { data: recoveryData, error: recoveryError } = await supabaseAdmin.auth.admin.generateLink({
         type: 'recovery',
         email: email,
@@ -248,23 +256,17 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // Extraer el token de la URL de Supabase
       const supabaseUrl = recoveryData.properties?.action_link;
       if (supabaseUrl) {
         const urlParams = new URL(supabaseUrl);
         const tokenParam = urlParams.searchParams.get('token');
-        if (tokenParam) {
-          // Construir el enlace hacia nuestra app con el token
-          inviteLink = `${request.nextUrl.origin}/auth/set-password?token=${tokenParam}`;
-        } else {
-          inviteLink = supabaseUrl;
-        }
+        inviteLink = tokenParam 
+          ? `${request.nextUrl.origin}/auth/set-password?token=${tokenParam}`
+          : supabaseUrl;
       } else {
-        inviteLink = supabaseUrl;
+        inviteLink = `${request.nextUrl.origin}/auth/set-password?error=no-link`;
       }
-      console.log('✅ Enlace de recuperación generado');
     } else {
-      // Generar enlace de invitación y extraer el token
       const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.generateLink({
         type: 'invite',
         email: email,
@@ -281,37 +283,26 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // Extraer el token de la URL de Supabase
       const supabaseUrl = inviteData.properties?.action_link;
       if (supabaseUrl) {
         const urlParams = new URL(supabaseUrl);
         const tokenParam = urlParams.searchParams.get('token');
-        if (tokenParam) {
-          // Construir el enlace hacia nuestra app con el token
-          inviteLink = `${request.nextUrl.origin}/auth/set-password?token=${tokenParam}`;
-        } else {
-          inviteLink = supabaseUrl;
-        }
+        inviteLink = tokenParam 
+          ? `${request.nextUrl.origin}/auth/set-password?token=${tokenParam}`
+          : supabaseUrl;
       } else {
-        inviteLink = supabaseUrl;
+        inviteLink = `${request.nextUrl.origin}/auth/set-password?error=no-link`;
       }
-      console.log('✅ Enlace de invitación generado');
     }
 
-    if (!inviteLink) {
-      console.error('❌ No se recibió el enlace');
-      return NextResponse.json(
-        { error: 'No se pudo generar el enlace.' },
-        { status: 500 }
-      );
-    }
-
-    console.log('🔗 Enlace generado (local):', inviteLink);
+    console.log('🔗 Enlace generado:', inviteLink);
+    console.log('✅ Rol asignado: docente');
 
     return NextResponse.json({
       id: newTeacher.id,
       email: newTeacher.email,
       inviteLink: inviteLink,
+      role: 'docente',
       message: isExistingAuthUser 
         ? 'Docente actualizado exitosamente. Comparte el siguiente enlace para que restablezca su contraseña.'
         : 'Docente creado exitosamente. Comparte el siguiente enlace para que establezca su contraseña.'

@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Star } from 'lucide-react'
+import { Star, BookOpen, Plus, Trash2, X, BookMarked } from 'lucide-react'
+import AssignCoursesModal from './AssignCoursesModal'
 
+// Definimos el tipo TeacherWithRating
 export interface TeacherWithRating {
   id: string
   name: string
@@ -32,6 +34,8 @@ export default function TeachersClient({ initialTeachers = [] }: Props) {
   const [editingTeacher, setEditingTeacher] = useState<TeacherWithRating | null>(null)
   const [editName, setEditName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [showCoursesModal, setShowCoursesModal] = useState(false)
+  const [selectedTeacherForCourses, setSelectedTeacherForCourses] = useState<TeacherWithRating | null>(null)
 
   function showError(msg: string) {
     setError(msg)
@@ -60,7 +64,7 @@ export default function TeachersClient({ initialTeachers = [] }: Props) {
     if (!res.ok) { showError(data.error ?? 'Error al crear el docente'); return }
 
     const updated = await fetch('/api/admin/teachers').then((r) => r.json())
-    setTeachers(updated || [])
+    setTeachers(updated)
     setFormData({ name: '', email: '' })
     setIsFormOpen(false)
     setGeneratedLink(data.inviteLink)
@@ -122,7 +126,6 @@ export default function TeachersClient({ initialTeachers = [] }: Props) {
     return <div className="flex items-center gap-0.5">{stars}</div>
   }
 
-  // Validación de seguridad: asegurar que teachers siempre sea un array
   const safeTeachers = Array.isArray(teachers) ? teachers : []
 
   return (
@@ -139,9 +142,7 @@ export default function TeachersClient({ initialTeachers = [] }: Props) {
           onClick={() => setIsFormOpen(true)}
           className="flex items-center gap-2 bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
+          <Plus className="w-4 h-4" />
           Crear docente
         </button>
       </div>
@@ -172,7 +173,7 @@ export default function TeachersClient({ initialTeachers = [] }: Props) {
                 <th className="text-left px-5 py-3.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">Cursos</th>
                 <th className="text-left px-5 py-3.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">Estado</th>
                 <th className="text-left px-5 py-3.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">Creado</th>
-                <th className="px-5 py-3.5" />
+                <th className="px-5 py-3.5">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -192,7 +193,7 @@ export default function TeachersClient({ initialTeachers = [] }: Props) {
                     ) : (
                       <div className="flex flex-col gap-1 max-w-xs">
                         {teacher.courses.slice(0, 2).map(course => (
-                          <span key={course.id} className="text-xs bg-gray-100 px-2 py-0.5 rounded-full inline-block w-fit">
+                          <span key={course.id} className="text-xs bg-gray-500 px-2 py-0.5 rounded-full inline-block w-fit">
                             {course.title}
                           </span>
                         ))}
@@ -244,14 +245,22 @@ export default function TeachersClient({ initialTeachers = [] }: Props) {
                         </svg>
                       </button>
                       <button
+                        onClick={() => {
+                          setSelectedTeacherForCourses(teacher)
+                          setShowCoursesModal(true)
+                        }}
+                        title="Asignar cursos"
+                        className="p-2 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors"
+                      >
+                        <BookMarked className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={() => handleDelete(teacher.id)}
                         disabled={loadingId === teacher.id}
                         title="Eliminar docente"
-                        className="p-2 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors"
+                        className="p-2 rounded-lg text-red-500 hover:bg-red-50 disabled:opacity-50 transition-colors"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397" />
-                        </svg>
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
@@ -268,10 +277,8 @@ export default function TeachersClient({ initialTeachers = [] }: Props) {
           <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base font-bold text-gray-900">Crear docente</h2>
-              <button onClick={() => setIsFormOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+              <button onClick={() => setIsFormOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleCreate} className="flex flex-col gap-4">
@@ -282,7 +289,8 @@ export default function TeachersClient({ initialTeachers = [] }: Props) {
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
+                  placeholder="Ej: Carlos Rodríguez"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition-all"
                 />
               </div>
               <div>
@@ -292,14 +300,15 @@ export default function TeachersClient({ initialTeachers = [] }: Props) {
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
+                  placeholder="docente@email.com"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition-all"
                 />
               </div>
               <div className="flex gap-3 mt-2">
-                <button type="button" onClick={() => setIsFormOpen(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50">
+                <button type="button" onClick={() => setIsFormOpen(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all">
                   Cancelar
                 </button>
-                <button type="submit" disabled={isSubmitting} className="flex-1 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-semibold disabled:opacity-60">
+                <button type="submit" disabled={isSubmitting} className="flex-1 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-semibold transition-all disabled:opacity-60">
                   {isSubmitting ? 'Creando...' : 'Crear'}
                 </button>
               </div>
@@ -314,10 +323,8 @@ export default function TeachersClient({ initialTeachers = [] }: Props) {
           <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base font-bold text-gray-900">Editar docente</h2>
-              <button onClick={() => setEditingTeacher(null)} className="text-gray-400 hover:text-gray-600">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+              <button onClick={() => setEditingTeacher(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleEdit} className="flex flex-col gap-4">
@@ -328,18 +335,24 @@ export default function TeachersClient({ initialTeachers = [] }: Props) {
                   required
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition-all"
                 />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Email</label>
-                <input type="email" value={editingTeacher.email} disabled className="w-full px-3.5 py-2.5 rounded-xl border border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed" />
+                <input
+                  type="email"
+                  value={editingTeacher.email}
+                  disabled
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-100 bg-gray-50 text-sm text-gray-400 cursor-not-allowed"
+                />
+                <p className="text-xs text-gray-400 mt-1">El email no puede modificarse.</p>
               </div>
               <div className="flex gap-3 mt-2">
-                <button type="button" onClick={() => setEditingTeacher(null)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50">
+                <button type="button" onClick={() => setEditingTeacher(null)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all">
                   Cancelar
                 </button>
-                <button type="submit" disabled={isSaving} className="flex-1 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-semibold disabled:opacity-60">
+                <button type="submit" disabled={isSaving} className="flex-1 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-semibold transition-all disabled:opacity-60">
                   {isSaving ? 'Guardando...' : 'Guardar'}
                 </button>
               </div>
@@ -374,6 +387,23 @@ export default function TeachersClient({ initialTeachers = [] }: Props) {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Modal Asignar cursos */}
+      {showCoursesModal && selectedTeacherForCourses && (
+        <AssignCoursesModal
+          teacherId={selectedTeacherForCourses.id}
+          teacherName={selectedTeacherForCourses.name || selectedTeacherForCourses.email}
+          onClose={() => {
+            setShowCoursesModal(false)
+            setSelectedTeacherForCourses(null)
+          }}
+          onSuccess={async () => {
+            const res = await fetch('/api/admin/teachers')
+            const data = await res.json()
+            setTeachers(data)
+          }}
+        />
       )}
     </div>
   )

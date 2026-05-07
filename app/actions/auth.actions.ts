@@ -1,3 +1,4 @@
+// app/actions/auth.actions.ts
 'use server'
 
 import { redirect } from 'next/navigation'
@@ -57,7 +58,17 @@ export async function loginAction(
 
   const role = await new GetUserRoleUseCase(userRepo).execute(userId).catch(() => null)
 
-  redirect(role === 'admin' ? '/admin' : '/dashboard')
+  // CORREGIDO: Redirigir según el rol
+  // - admin → /admin
+  // - docente → /teacher-dashboard
+  // - estudiante → /dashboard
+  if (role === 'admin') {
+    redirect('/admin')
+  } else if (role === 'docente') {
+    redirect('/teacher-dashboard')
+  } else {
+    redirect('/dashboard')
+  }
 }
 
 export async function linkedInOAuthAction(): Promise<void> {

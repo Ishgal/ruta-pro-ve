@@ -1,124 +1,42 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../app/generated/prisma"
+  provider        = "prisma-client-js"
+  output          = "../app/generated/prisma"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-// ============================================================================
-// ENUMS
-// ============================================================================
-
-enum Role {
-  estudiante
-  docente
-  admin
-}
-
-enum SetupStatus {
-  pending
-  active
-}
-
-enum PlanTier {
-  bronce
-  plata
-  oro
-}
-
-enum SubscriptionStatus {
-  active
-  cancelled
-  expired
-}
-
-enum ProgressStatus {
-  not_started
-  in_progress
-  completed
-}
-
-enum PaymentMethod {
-  pago_movil
-  binance_usdt
-}
-
-enum PaymentStatus {
-  pending
-  paid
-  failed
-  refunded
-}
-
-enum SkillCategory {
-  technical
-  soft
-  language
-}
-
-enum SkillLevel {
-  beginner
-  intermediate
-  advanced
-}
-
-enum SkillSource {
-  test
-  cv_analysis
-  course
-}
-
-enum LessonType {
-  video
-  article
-  quiz
-  slides
-}
-
-enum MedalType {
-  course
-  level
-  special
-}
-
-enum SubscriptionType {
-  freemium
-  premium
-}
-
-// ============================================================================
-// MODELOS
-// ============================================================================
-
 model User {
-  id               String               @id @default(uuid()) @db.Uuid
-  email            String               @unique @db.VarChar(255)
-  name             String               @db.VarChar(255)
-  role             Role                 @default(estudiante)
-  linkedinId       String?              @map("linkedin_id") @db.VarChar(255)
-  avatarUrl        String?              @map("avatar_url") @db.VarChar(500)
-  createdAt        DateTime?            @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt        DateTime?            @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  lastSignInAt     DateTime?            @map("last_sign_in_at") @db.Timestamp(6)
-  setupStatus      SetupStatus          @default(active) @map("setup_status")
-  isActive         Boolean              @default(true) @map("is_active")
-  plan             PlanTier             @default(bronce)
-  certDiscounts    CertDiscount[]
-  certificates     Certificate[]
-  examAttempts     ExamAttempt[]
-  levelCompletions LevelCompletion[]
-  payments         Payment[]
-  studentProfile   StudentProfile?
-  subscriptions    Subscription[]
-  teacherProfile   Teacher?
-  badges           UserBadge[]
-  courseProgress   UserCourseProgress[]
-  lessonProgress   UserLessonProgress[]
-  skills           UserSkill[]
-  userStats        UserStats?
-  teacherReviews   TeacherReview[]       // ← Reseñas escritas por este estudiante
+  id                                                  String               @id @default(uuid()) @db.Uuid
+  email                                               String               @unique @db.VarChar(255)
+  name                                                String               @db.VarChar(255)
+  role                                                Role                 @default(estudiante)
+  linkedinId                                          String?              @map("linkedin_id") @db.VarChar(255)
+  avatarUrl                                           String?              @map("avatar_url") @db.VarChar(500)
+  createdAt                                           DateTime?            @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                                           DateTime?            @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  lastSignInAt                                        DateTime?            @map("last_sign_in_at") @db.Timestamp(6)
+  isActive                                            Boolean              @default(true) @map("is_active")
+  plan                                                PlanTier             @default(bronce)
+  setupStatus                                         SetupStatus          @default(active) @map("setup_status")
+  certDiscounts                                       CertDiscount[]
+  certificates                                        Certificate[]
+  examAttempts                                        ExamAttempt[]
+  levelCompletions                                    LevelCompletion[]
+  payments                                            Payment[]
+  studentProfile                                      StudentProfile?
+  subscriptions                                       Subscription[]
+  teacher_messages_teacher_messages_student_idTousers teacher_messages[]   @relation("teacher_messages_student_idTousers")
+  teacher_messages_teacher_messages_teacher_idTousers teacher_messages[]   @relation("teacher_messages_teacher_idTousers")
+  teacherReviews                                      TeacherReview[]
+  teacherProfile                                      Teacher?
+  badges                                              UserBadge[]
+  courseProgress                                      UserCourseProgress[]
+  lessonProgress                                      UserLessonProgress[]
+  skills                                              UserSkill[]
+  userStats                                           UserStats?
 
   @@map("users")
 }
@@ -129,34 +47,30 @@ model Teacher {
   studentsLimit Int?                @default(20) @map("students_limit")
   bio           String?
   hourlyRate    Int?                @map("hourly_rate")
-  rating        Float?              @default(0)   // ← NUEVO: promedio de calificación (1-5)
+  rating        Float?              @default(0)
   assignments   TeacherAssignment[]
-  reviews       TeacherReview[]                    // ← NUEVO: reseñas recibidas
+  reviews       TeacherReview[]
   user          User                @relation(fields: [id], references: [id], onDelete: Cascade)
 
   @@map("teachers")
 }
 
 model TeacherReview {
-  id          String   @id @default(uuid()) @db.Uuid
-  teacherId   String   @map("teacher_id") @db.Uuid
-  studentId   String   @map("student_id") @db.Uuid
-  courseId    String   @map("course_id") @db.Uuid
-  rating      Int                 // 1 a 5
-  comment     String?  @db.Text
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-
-  teacher     Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid()) @db.Uuid
+  teacherId String   @map("teacher_id") @db.Uuid
+  studentId String   @map("student_id") @db.Uuid
+  courseId  String   @map("course_id") @db.Uuid
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher   Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@unique([teacherId, studentId, courseId])
   @@index([teacherId])
   @@map("teacher_reviews")
 }
-
-// El resto de tus modelos (UserStats, Level, Course, Lesson, etc.) se mantienen exactamente igual que los tenías,
-// solo que se añade la relación inversa teacherReviews en Course.
 
 model Course {
   id                 String               @id @default(uuid()) @db.Uuid
@@ -174,21 +88,12 @@ model Course {
   examAttempts       ExamAttempt[]
   lessons            Lesson[]
   teacherAssignments TeacherAssignment[]
+  teacherReviews     TeacherReview[]
   userProgress       UserCourseProgress[]
-  teacherReviews     TeacherReview[]       // ← NUEVO: reseñas de profesores en este curso
 
   @@index([levelId], map: "idx_courses_level_id")
   @@map("courses")
 }
-
-// (Todos los demás modelos: Level, Lesson, UserCourseProgress, etc. déjalos exactamente como los tenías.
-// El resto del archivo no ha cambiado, solo añadí los tres campos señalados.
-// Abajo pongo el resto completo para que no haya omitido nada, pero si quieres ahorrar espacio,
-// puedes mantener el tuyo y solo añadir los bloques de TeacherReview y las líneas indicadas).
-
-// ============================================================================
-// MODELOS RESTANTES (iguales a los tuyos)
-// ============================================================================
 
 model UserStats {
   userId                        String    @id @map("user_id") @db.Uuid
@@ -331,12 +236,12 @@ model Payment {
   transactionId  String?        @map("transaction_id") @db.VarChar(255)
   paidAt         DateTime?      @map("paid_at") @db.Timestamp(6)
   createdAt      DateTime?      @default(now()) @map("created_at") @db.Timestamp(6)
+  amountBs       Decimal?       @map("amount_bs") @db.Decimal(14, 2)
   certificateId  String?        @map("certificate_id") @db.Uuid
-  subscriptionId String?        @map("subscription_id") @db.Uuid
+  exchangeRate   Decimal?       @map("exchange_rate") @db.Decimal(12, 2)
   originalAmount Decimal?       @map("original_amount") @db.Decimal(10, 2)
   paymentDate    DateTime?      @map("payment_date") @db.Timestamp(6)
-  exchangeRate   Decimal?       @map("exchange_rate") @db.Decimal(12, 2)
-  amountBs       Decimal?       @map("amount_bs") @db.Decimal(14, 2)
+  subscriptionId String?        @map("subscription_id") @db.Uuid
   certDiscount   CertDiscount?
   certificate    Certificate?   @relation(fields: [certificateId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   subscription   Subscription?  @relation(fields: [subscriptionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -478,4 +383,100 @@ model ExamAttempt {
   @@index([userId], map: "idx_exam_attempts_user_id")
   @@index([courseId, userId], map: "idx_exam_attempts_course_user")
   @@map("exam_attempts")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model teacher_messages {
+  id                                       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  teacher_id                               String    @db.Uuid
+  student_id                               String    @db.Uuid
+  content                                  String
+  is_read                                  Boolean?  @default(false)
+  created_at                               DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at                               DateTime? @default(now()) @db.Timestamptz(6)
+  users_teacher_messages_student_idTousers User      @relation("teacher_messages_student_idTousers", fields: [student_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_teacher_messages_teacher_idTousers User      @relation("teacher_messages_teacher_idTousers", fields: [teacher_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([teacher_id, student_id, created_at(sort: Desc)], map: "idx_teacher_messages_conversation")
+  @@index([created_at(sort: Desc)], map: "idx_teacher_messages_created_at")
+  @@index([student_id], map: "idx_teacher_messages_student_id")
+  @@index([teacher_id], map: "idx_teacher_messages_teacher_id")
+  @@index([teacher_id, is_read], map: "idx_teacher_messages_teacher_unread", where: raw("(is_read = false)"))
+}
+
+enum Role {
+  estudiante
+  docente
+  admin
+}
+
+enum SetupStatus {
+  pending
+  active
+}
+
+enum PlanTier {
+  bronce
+  plata
+  oro
+}
+
+enum SubscriptionStatus {
+  active
+  cancelled
+  expired
+}
+
+enum ProgressStatus {
+  not_started
+  in_progress
+  completed
+}
+
+enum PaymentMethod {
+  pago_movil
+  binance_usdt
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
+enum SkillCategory {
+  technical
+  soft
+  language
+}
+
+enum SkillLevel {
+  beginner
+  intermediate
+  advanced
+}
+
+enum SkillSource {
+  test
+  cv_analysis
+  course
+}
+
+enum LessonType {
+  video
+  article
+  quiz
+  slides
+}
+
+enum MedalType {
+  course
+  level
+  special
+}
+
+enum SubscriptionType {
+  freemium
+  premium
 }
