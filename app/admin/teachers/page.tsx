@@ -1,29 +1,63 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { PrismaUserRepository } from '@/adapters/repositories/prisma-user.repository'
-import { SupabaseAdminUserRepository } from '@/adapters/repositories/supabase-admin-user.repository'
-import { GetUserRoleUseCase } from '@/application/use-cases/user/get-user-role.usecase'
-import { GetUsersByRoleUseCase } from '@/application/use-cases/admin/get-users-by-role.usecase'
-import UsersTableClient from '@/components/admin/shared/UsersTableClient'
+import { prisma } from '@/lib/prisma'
+import TeachersClient, { TeacherWithRating } from '@/components/admin/teachers/TeachersClient'
 
 export default async function TeachersPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const role = await new GetUserRoleUseCase(new PrismaUserRepository()).execute(user.id)
-  if (role !== 'admin') redirect('/dashboard')
+  const dbUser = await prisma.user.findUnique({
+    where: { email: user.email! },
+    select: { role: true }
+  })
+  if (dbUser?.role !== 'admin') redirect('/dashboard')
 
-  const teachers = await new GetUsersByRoleUseCase(new SupabaseAdminUserRepository()).execute('docente')
+  const teachers = await prisma.user.findMany({
+    where: { role: 'docente' },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      plan: true,
+      isActive: true,
+      setupStatus: true,
+      createdAt: true,
+      teacherProfile: {
+        select: {
+          rating: true,
+          assignments: {
+            where: { isActive: true },
+            select: {
+              course: {
+                select: { id: true, title: true, isPublished: true }
+              }
+            }
+          }
+        }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  })
 
-  return (
-    <UsersTableClient
-      title="Docentes"
-      singularLabel="docente"
-      initialUsers={teachers}
-      apiBase="/api/admin/teachers"
-      canInvite
-      canToggleActive
-    />
-  )
+  const teachersWithData: TeacherWithRating[] = teachers.map(teacher => ({
+    id: teacher.id,
+    name: teacher.name ?? '',
+    email: teacher.email,
+    role: teacher.role,
+    plan: teacher.plan,
+    isActive: teacher.isActive,
+    setupStatus: teacher.setupStatus,
+    createdAt: teacher.createdAt,
+    rating: teacher.teacherProfile?.rating ?? 0,
+    courses: teacher.teacherProfile?.assignments.map(ass => ({
+      id: ass.course.id,
+      title: ass.course.title,
+      isPublished: ass.course.isPublished
+    })) ?? []
+  }))
+
+  return <TeachersClient initialTeachers={teachersWithData} />
 }

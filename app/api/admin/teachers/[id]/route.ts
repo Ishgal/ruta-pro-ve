@@ -50,12 +50,13 @@ export async function DELETE(
 
   const { id } = await context.params
 
-  const user = await prisma.user.findUnique({ where: { id }, select: { setupStatus: true } })
+  const user = await prisma.user.findUnique({ where: { id }, select: { id: true } })
   if (!user) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
-  if (user.setupStatus !== 'pending') {
-    return NextResponse.json({ error: 'Solo se pueden eliminar docentes con registro pendiente' }, { status: 403 })
-  }
 
+  // Eliminar de Prisma (cascade eliminará teacher, teacherAssignments, etc.)
+  await prisma.user.delete({ where: { id } })
+  // Eliminar de Supabase Auth
   await new SupabaseAdminUserRepository().deleteUser(id)
+
   return NextResponse.json({ success: true })
 }

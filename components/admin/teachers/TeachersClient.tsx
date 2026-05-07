@@ -1,14 +1,27 @@
 'use client'
 
 import { useState } from 'react'
-import { User } from '@/domain/entities/user.entity'
+import { Star } from 'lucide-react'
 
-interface Props {
-  initialTeachers: User[]
+export interface TeacherWithRating {
+  id: string
+  name: string
+  email: string
+  role: string
+  plan: string
+  isActive: boolean
+  setupStatus: string
+  createdAt: Date | null
+  rating: number
+  courses: { id: string; title: string; isPublished: boolean | null }[]
 }
 
-export default function TeachersClient({ initialTeachers }: Props) {
-  const [teachers, setTeachers] = useState<User[]>(initialTeachers)
+interface Props {
+  initialTeachers: TeacherWithRating[]
+}
+
+export default function TeachersClient({ initialTeachers = [] }: Props) {
+  const [teachers, setTeachers] = useState<TeacherWithRating[]>(initialTeachers || [])
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [formData, setFormData] = useState({ name: '', email: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -16,7 +29,7 @@ export default function TeachersClient({ initialTeachers }: Props) {
   const [generatedLink, setGeneratedLink] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [editingTeacher, setEditingTeacher] = useState<User | null>(null)
+  const [editingTeacher, setEditingTeacher] = useState<TeacherWithRating | null>(null)
   const [editName, setEditName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
 
@@ -47,7 +60,7 @@ export default function TeachersClient({ initialTeachers }: Props) {
     if (!res.ok) { showError(data.error ?? 'Error al crear el docente'); return }
 
     const updated = await fetch('/api/admin/teachers').then((r) => r.json())
-    setTeachers(updated)
+    setTeachers(updated || [])
     setFormData({ name: '', email: '' })
     setIsFormOpen(false)
     setGeneratedLink(data.inviteLink)
@@ -63,7 +76,7 @@ export default function TeachersClient({ initialTeachers }: Props) {
     setGeneratedLink(data.inviteLink)
   }
 
-  function openEdit(teacher: User) {
+  function openEdit(teacher: TeacherWithRating) {
     setEditingTeacher(teacher)
     setEditName(teacher.name)
   }
@@ -95,6 +108,23 @@ export default function TeachersClient({ initialTeachers }: Props) {
     else showError('Error al eliminar el docente.')
   }
 
+  const renderStars = (rating: number) => {
+    const stars = []
+    const safeRating = rating || 0
+    for (let i = 0; i < 5; i++) {
+      stars.push(
+        <Star
+          key={i}
+          className={`w-4 h-4 ${i < Math.round(safeRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+        />
+      )
+    }
+    return <div className="flex items-center gap-0.5">{stars}</div>
+  }
+
+  // Validación de seguridad: asegurar que teachers siempre sea un array
+  const safeTeachers = Array.isArray(teachers) ? teachers : []
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -102,12 +132,12 @@ export default function TeachersClient({ initialTeachers }: Props) {
         <div>
           <h1 className="text-xl font-bold text-gray-900">Docentes</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {teachers.length} docente{teachers.length !== 1 ? 's' : ''} registrado{teachers.length !== 1 ? 's' : ''}
+            {safeTeachers.length} docente{safeTeachers.length !== 1 ? 's' : ''} registrado{safeTeachers.length !== 1 ? 's' : ''}
           </p>
         </div>
         <button
           onClick={() => setIsFormOpen(true)}
-          className="flex items-center gap-2 bg-[#00B5B5] hover:bg-[#009999] text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all"
+          className="flex items-center gap-2 bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -122,9 +152,9 @@ export default function TeachersClient({ initialTeachers }: Props) {
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        {teachers.length === 0 ? (
+      {/* Tabla */}
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
+        {safeTeachers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-gray-400">
             <svg className="w-10 h-10 mb-3 text-gray-300" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
@@ -138,16 +168,40 @@ export default function TeachersClient({ initialTeachers }: Props) {
               <tr className="border-b border-gray-100 bg-gray-50/50">
                 <th className="text-left px-5 py-3.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">Nombre</th>
                 <th className="text-left px-5 py-3.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">Email</th>
+                <th className="text-left px-5 py-3.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">Calificación</th>
+                <th className="text-left px-5 py-3.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">Cursos</th>
                 <th className="text-left px-5 py-3.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">Estado</th>
                 <th className="text-left px-5 py-3.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">Creado</th>
                 <th className="px-5 py-3.5" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {teachers.map((teacher) => (
+              {safeTeachers.map((teacher) => (
                 <tr key={teacher.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-5 py-4 font-medium text-gray-900">{teacher.name}</td>
+                  <td className="px-5 py-4 font-medium text-gray-900">{teacher.name || '—'}</td>
                   <td className="px-5 py-4 text-gray-500">{teacher.email}</td>
+                  <td className="px-5 py-4">
+                    <div className="flex flex-col items-start gap-0.5">
+                      {renderStars(teacher.rating)}
+                      <span className="text-xs text-gray-400">{teacher.rating.toFixed(1)} / 5</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4">
+                    {!teacher.courses || teacher.courses.length === 0 ? (
+                      <span className="text-xs text-gray-400">—</span>
+                    ) : (
+                      <div className="flex flex-col gap-1 max-w-xs">
+                        {teacher.courses.slice(0, 2).map(course => (
+                          <span key={course.id} className="text-xs bg-gray-100 px-2 py-0.5 rounded-full inline-block w-fit">
+                            {course.title}
+                          </span>
+                        ))}
+                        {teacher.courses.length > 2 && (
+                          <span className="text-xs text-gray-400">+{teacher.courses.length - 2} más</span>
+                        )}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-5 py-4">
                     {teacher.setupStatus === 'pending' ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 text-xs font-medium">
@@ -173,7 +227,7 @@ export default function TeachersClient({ initialTeachers }: Props) {
                           onClick={() => handleResend(teacher.id)}
                           disabled={loadingId === teacher.id}
                           title="Obtener link de acceso"
-                          className="p-2 rounded-lg text-[#00B5B5] hover:bg-[#E6F8F8] disabled:opacity-50 transition-colors"
+                          className="p-2 rounded-lg text-teal-500 hover:bg-teal-50 disabled:opacity-50 transition-colors"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -186,7 +240,7 @@ export default function TeachersClient({ initialTeachers }: Props) {
                         className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
                         </svg>
                       </button>
                       <button
@@ -196,7 +250,7 @@ export default function TeachersClient({ initialTeachers }: Props) {
                         className="p-2 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397" />
                         </svg>
                       </button>
                     </div>
@@ -208,62 +262,45 @@ export default function TeachersClient({ initialTeachers }: Props) {
         )}
       </div>
 
-      {/* Create modal */}
+      {/* Modal Crear docente */}
       {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4">
           <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base font-bold text-gray-900">Crear docente</h2>
-              <button onClick={() => setIsFormOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+              <button onClick={() => setIsFormOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-
             <form onSubmit={handleCreate} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
+              <div>
                 <label className="text-sm font-medium text-gray-700">Nombre completo</label>
                 <input
                   type="text"
                   required
                   value={formData.name}
-                  onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-                  placeholder="Ej: Carlos Rodríguez"
-                  className="px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00B5B5]/30 focus:border-[#00B5B5] transition-all"
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
                 />
               </div>
-
-              <div className="flex flex-col gap-1.5">
+              <div>
                 <label className="text-sm font-medium text-gray-700">Email</label>
                 <input
                   type="email"
                   required
                   value={formData.email}
-                  onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
-                  placeholder="docente@email.com"
-                  className="px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00B5B5]/30 focus:border-[#00B5B5] transition-all"
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
                 />
               </div>
-
-              <p className="text-xs text-gray-400 bg-gray-50 px-3 py-2.5 rounded-lg">
-                Se generará un link de acceso para compartir con el docente.
-              </p>
-
-              <div className="flex gap-3 mt-1">
-                <button
-                  type="button"
-                  onClick={() => setIsFormOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
-                >
+              <div className="flex gap-3 mt-2">
+                <button type="button" onClick={() => setIsFormOpen(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50">
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 py-2.5 rounded-xl bg-[#00B5B5] hover:bg-[#009999] text-white text-sm font-semibold transition-all disabled:opacity-60"
-                >
-                  {isSubmitting ? 'Creando...' : 'Crear y obtener link'}
+                <button type="submit" disabled={isSubmitting} className="flex-1 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-semibold disabled:opacity-60">
+                  {isSubmitting ? 'Creando...' : 'Crear'}
                 </button>
               </div>
             </form>
@@ -271,56 +308,39 @@ export default function TeachersClient({ initialTeachers }: Props) {
         </div>
       )}
 
-      {/* Edit modal */}
+      {/* Modal Editar docente */}
       {editingTeacher && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4">
           <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base font-bold text-gray-900">Editar docente</h2>
-              <button onClick={() => setEditingTeacher(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+              <button onClick={() => setEditingTeacher(null)} className="text-gray-400 hover:text-gray-600">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-
             <form onSubmit={handleEdit} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
+              <div>
                 <label className="text-sm font-medium text-gray-700">Nombre completo</label>
                 <input
                   type="text"
                   required
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#00B5B5]/30 focus:border-[#00B5B5] transition-all"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
                 />
               </div>
-
-              <div className="flex flex-col gap-1.5">
+              <div>
                 <label className="text-sm font-medium text-gray-700">Email</label>
-                <input
-                  type="text"
-                  value={editingTeacher.email}
-                  disabled
-                  className="px-3.5 py-2.5 rounded-xl border border-gray-100 bg-gray-50 text-sm text-gray-400 cursor-not-allowed"
-                />
-                <p className="text-xs text-gray-400">El email no puede modificarse.</p>
+                <input type="email" value={editingTeacher.email} disabled className="w-full px-3.5 py-2.5 rounded-xl border border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed" />
               </div>
-
-              <div className="flex gap-3 mt-1">
-                <button
-                  type="button"
-                  onClick={() => setEditingTeacher(null)}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
-                >
+              <div className="flex gap-3 mt-2">
+                <button type="button" onClick={() => setEditingTeacher(null)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50">
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="flex-1 py-2.5 rounded-xl bg-[#00B5B5] hover:bg-[#009999] text-white text-sm font-semibold transition-all disabled:opacity-60"
-                >
-                  {isSaving ? 'Guardando...' : 'Guardar cambios'}
+                <button type="submit" disabled={isSaving} className="flex-1 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-semibold disabled:opacity-60">
+                  {isSaving ? 'Guardando...' : 'Guardar'}
                 </button>
               </div>
             </form>
@@ -328,41 +348,29 @@ export default function TeachersClient({ initialTeachers }: Props) {
         </div>
       )}
 
-      {/* Link modal */}
+      {/* Modal Link de invitación */}
       {generatedLink && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4">
           <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
                 <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                 </svg>
               </div>
               <div>
-                <h2 className="text-base font-bold text-gray-900">Link de acceso generado</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Comparte este link con el docente. Expira en 24 horas.</p>
+                <h2 className="text-base font-bold text-gray-900">Link de acceso</h2>
+                <p className="text-xs text-gray-500">Comparte este link con el docente. Expira en 24 horas.</p>
               </div>
             </div>
-
             <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 mb-4">
               <p className="text-xs text-gray-600 flex-1 truncate font-mono">{generatedLink}</p>
-              <button
-                onClick={() => copyLink(generatedLink)}
-                className="shrink-0 text-xs font-semibold text-[#00B5B5] hover:text-[#009999] transition-colors"
-              >
+              <button onClick={() => copyLink(generatedLink)} className="text-xs font-semibold text-teal-500 hover:text-teal-600">
                 {copied ? '¡Copiado!' : 'Copiar'}
               </button>
             </div>
-
-            <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2.5 rounded-lg mb-4">
-              Este link aparece una sola vez. Si lo necesitas de nuevo, usa "Obtener link" en la tabla.
-            </p>
-
-            <button
-              onClick={() => setGeneratedLink(null)}
-              className="w-full py-2.5 rounded-xl bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold transition-all"
-            >
-              Entendido
+            <button onClick={() => setGeneratedLink(null)} className="w-full py-2.5 rounded-xl bg-gray-900 hover:bg-gray-700 text-white font-semibold">
+              Cerrar
             </button>
           </div>
         </div>

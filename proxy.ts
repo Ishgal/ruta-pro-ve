@@ -29,10 +29,16 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  if (!user && (pathname.startsWith('/dashboard') || pathname.startsWith('/admin'))) {
+  // Rutas públicas (añadimos /auth/set-password)
+  const publicRoutes = ['/login', '/register', '/auth/set-password']
+  const isPublicRoute = publicRoutes.some(route => pathname === route)
+
+  // Si no hay usuario y la ruta es protegida, redirigir a login
+  if (!user && (pathname.startsWith('/dashboard') || pathname.startsWith('/admin')) && !isPublicRoute) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
+  // Si hay usuario y está en login o register, redirigir a dashboard
   if (user && (pathname === '/login' || pathname === '/register')) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
@@ -41,5 +47,11 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*', '/auth/set-password', '/login', '/register'],
+  matcher: [
+    '/dashboard/:path*', 
+    '/admin/:path*', 
+    '/auth/set-password',  // ← Añadimos esta línea
+    '/login', 
+    '/register'
+  ],
 }
