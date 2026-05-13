@@ -5,8 +5,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { motion, AnimatePresence } from 'framer-motion'
 import ExamModal from '@/components/dashboard/ExamModal'
 import AdBanner from '@/components/dashboard/AdBanner'
+import BadgeNotification from '@/components/dashboard/BadgeNotification'
 
 type LessonType = 'video' | 'article' | 'quiz' | 'slides'
 
@@ -34,6 +36,9 @@ type Props = {
   totalLessons: number
   initialExamPassed: boolean
   userPlan: string
+  teacherId: string | null
+  hasExistingRating: boolean
+  quizResults: Record<string, Record<string, number>>
 }
 
 function extractYouTubeId(url: string): string | null {
@@ -167,38 +172,49 @@ function VideoPlayer({ lesson }: { lesson: PlayerLesson }) {
 
 function QuizSection({
   lessonId,
+  courseId,
   quizData,
   onComplete,
   disabled,
   isCompleted,
+  initialAnswers,
 }: {
   lessonId: string
+  courseId: string
   quizData: QuizData
   onComplete: () => void
   disabled: boolean
   isCompleted: boolean
+  initialAnswers: Record<string, number> | null
 }) {
-  const storageKey = `quiz-${lessonId}`
+  const [localAnswers, setLocalAnswers] = useState<Record<number, number>>({})
+  const [localSubmitted, setLocalSubmitted] = useState(false)
+  const [saving, setSaving] = useState(false)
 
-  const [answers, setAnswers] = useState<Record<number, number>>(() => {
-    try {
-      const saved = localStorage.getItem(storageKey)
-      return saved ? (JSON.parse(saved).answers ?? {}) : {}
-    } catch { return {} }
-  })
-  const [submitted, setSubmitted] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem(storageKey)
-      return saved ? (JSON.parse(saved).submitted ?? false) : false
-    } catch { return false }
-  })
+  // Derivar estado: si el servidor ya tiene datos, mostrarlos directamente
+  const submitted = localSubmitted || initialAnswers !== null
+  const answers: Record<number, number> = localSubmitted
+    ? localAnswers
+    : initialAnswers !== null
+      ? (initialAnswers as unknown as Record<number, number>)
+      : localAnswers
 
-  useEffect(() => {
-    try { localStorage.setItem(storageKey, JSON.stringify({ answers, submitted })) } catch {}
-  }, [answers, submitted, storageKey])
+  async function handleVerify() {
+    setSaving(true)
+    try {
+      await fetch(`/api/courses/${courseId}/quiz-result`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lessonId, answers: localAnswers }),
+      })
+    } finally {
+      setSaving(false)
+      setLocalSubmitted(true)
+    }
+  }
 
   const questions = quizData.questions ?? []
-  const allAnswered = questions.every((_, i) => answers[i] !== undefined)
+  const allAnswered = questions.every((_, i) => localAnswers[i] !== undefined)
   const correctCount = submitted
     ? questions.filter((q, i) => answers[i] === q.correctIndex).length
     : 0
@@ -225,7 +241,7 @@ function QuizSection({
                 return (
                   <button
                     key={oi}
-                    onClick={() => !submitted && setAnswers(prev => ({ ...prev, [qi]: oi }))}
+                    onClick={() => !submitted && setLocalAnswers(prev => ({ ...prev, [qi]: oi }))}
                     className={`text-left text-sm px-4 py-3 rounded-xl transition-all ${cls}`}
                   >
                     {opt}
@@ -247,11 +263,11 @@ function QuizSection({
           </div>
         ) : !submitted ? (
           <button
-            disabled={!allAnswered}
-            onClick={() => setSubmitted(true)}
+            disabled={!allAnswered || saving}
+            onClick={handleVerify}
             className="px-5 py-2.5 rounded-xl bg-[#1B4F8C] disabled:opacity-40 text-white text-sm font-semibold transition-all hover:bg-[#163e6e]"
           >
-            Verificar respuestas
+            {saving ? 'Guardando...' : 'Verificar respuestas'}
           </button>
         ) : (
           <div className="flex items-center gap-3">
@@ -280,6 +296,9 @@ export default function CoursePlayerClient({
   totalLessons,
   initialExamPassed,
   userPlan,
+  teacherId,
+  hasExistingRating,
+  quizResults,
 }: Props) {
   const router = useRouter()
   const [activeLessonId, setActiveLessonId] = useState(initialActiveLessonId)
@@ -291,9 +310,27 @@ export default function CoursePlayerClient({
   const [examOpen, setExamOpen] = useState(false)
   const [certNotifOpen, setCertNotifOpen] = useState(false)
   const [adOpen, setAdOpen] = useState(false)
+  const [earnedBadges, setEarnedBadges] = useState<{ name: string; icon: string; description: string }[]>([])
+  const [ratingOpen, setRatingOpen] = useState(false)
+  const [selectedRating, setSelectedRating] = useState(0)
+  const [hoveredRating, setHoveredRating] = useState(0)
+  const [ratingComment, setRatingComment] = useState('')
+  const [submittingRating, setSubmittingRating] = useState(false)
+  const [ratingDone, setRatingDone] = useState(hasExistingRating)
   const pendingLessonRef = useRef<string | null>(null)
   const justPassedRef = useRef(false)
   const isBronce = userPlan === 'bronce'
+  const canRate = userPlan === 'oro' && !!teacherId && !ratingDone
+
+  // Scroll al inicio de la leccion cada vez que cambia
+  useEffect(() => {
+    document.querySelector('main')?.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+  }, [activeLessonId])
+
+  // Show ad on course entry for bronce users
+  useEffect(() => {
+    if (isBronce) setAdOpen(true)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const completedCount = completedIds.size
   const allLessonsComplete = completedCount >= totalLessons
@@ -326,7 +363,7 @@ export default function CoursePlayerClient({
 
   function selectLesson(lesson: PlayerLesson, index: number) {
     if (!isAccessible(index)) return
-    setActiveLessonId(lesson.id)
+    navigateTo(lesson.id)
   }
 
   async function markComplete(lessonId?: string) {
@@ -340,7 +377,9 @@ export default function CoursePlayerClient({
         body: JSON.stringify({ lessonId: targetId }),
       })
       if (res.ok) {
+        const data = await res.json()
         setCompletedIds(prev => new Set([...prev, targetId]))
+        if (data.newBadges?.length > 0) setEarnedBadges(data.newBadges)
         const currentIdx = lessons.findIndex(l => l.id === targetId)
         const next = lessons[currentIdx + 1]
         if (next) navigateTo(next.id)
@@ -350,17 +389,44 @@ export default function CoursePlayerClient({
     }
   }
 
+  async function submitRating() {
+    if (!teacherId || selectedRating === 0 || submittingRating) return
+    setSubmittingRating(true)
+    try {
+      const res = await fetch(`/api/teachers/${teacherId}/rating`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courseId, rating: selectedRating, comment: ratingComment.trim() || undefined }),
+      })
+      if (res.ok) {
+        setRatingDone(true)
+        setRatingOpen(false)
+      }
+    } finally {
+      setSubmittingRating(false)
+    }
+  }
+
   const isActiveCompleted = completedIds.has(activeLesson?.id ?? '')
   const quizData = activeLesson?.quizData as QuizData | null
   // Quiz can be attached to any lesson type
   const hasQuiz = (quizData?.questions?.length ?? 0) > 0
 
   return (
-    <div className="min-h-full bg-[#F4F6F9] p-4 md:p-5">
+    <div className="min-h-full bg-[#F4F6F9] px-4 pt-4 pb-28 md:p-5">
       <div className="flex flex-col md:flex-row gap-4 md:gap-5">
 
-        {/* ——— COLUMNA IZQUIERDA (flex-[3] ≈ 60%) ——— */}
-        <div className="flex-[3] min-w-0 flex flex-col gap-4">
+        {/* ——— COLUMNA IZQUIERDA (flex-[3] ≈ 60%) — en mobile: order-2 ——— */}
+        <div className="flex-[3] min-w-0 flex flex-col order-2 md:order-1">
+          <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={activeLessonId}
+            initial={{ x: 20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -20, opacity: 0 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="flex flex-col gap-4"
+          >
 
           {/* 1. Video */}
           {activeLesson?.lessonType === 'video' && <VideoPlayer lesson={activeLesson} />}
@@ -485,31 +551,36 @@ export default function CoursePlayerClient({
               <QuizSection
                 key={activeLesson?.id}
                 lessonId={activeLesson?.id ?? ''}
+                courseId={courseId}
                 quizData={quizData}
                 disabled={marking}
                 isCompleted={isActiveCompleted}
                 onComplete={() => markComplete(activeLesson?.id)}
+                initialAnswers={quizResults[activeLesson?.id ?? ''] ?? null}
               />
             </div>
           )}
+
+          </motion.div>
+          </AnimatePresence>
         </div>
 
-        {/* ——— COLUMNA DERECHA (flex-[2] ≈ 40%) ——— */}
-        <div className="flex-[2] min-w-[260px] flex flex-col gap-4">
+        {/* ——— COLUMNA DERECHA (flex-[2] ≈ 40%) — en mobile: order-1, aparece primero ——— */}
+        <div className="flex-[2] md:min-w-[260px] flex flex-col gap-4 order-1 md:order-2">
 
           {/* Tarjeta 1: Tu Progreso */}
-          <div className="bg-white rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-3">
+          <div className="bg-white rounded-2xl px-4 py-3.5 md:p-5">
+            <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-semibold text-gray-800">Tu Progreso</p>
-              <span className="text-xl font-bold text-[#00B5B5]">{progressPercent}%</span>
+              <span className="text-base md:text-xl font-bold text-[#00B5B5]">{progressPercent}%</span>
             </div>
-            <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-2 md:h-2.5 bg-gray-100 rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#00B5B5] rounded-full transition-all duration-700"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-xs text-gray-400 mt-1.5">
               {examPassed
                 ? 'Curso completado. Felicidades.'
                 : allLessonsComplete
@@ -621,9 +692,10 @@ export default function CoursePlayerClient({
               justPassedRef.current = false
             }
           }}
-          onPassed={() => {
+          onPassed={(badges) => {
             justPassedRef.current = true
             setExamPassed(true)
+            if (badges.length > 0) setEarnedBadges(badges)
           }}
         />
       )}
@@ -662,10 +734,84 @@ export default function CoursePlayerClient({
                   Ver mi certificado
                 </button>
                 <button
-                  onClick={() => setCertNotifOpen(false)}
+                  onClick={() => {
+                    setCertNotifOpen(false)
+                    if (canRate) setRatingOpen(true)
+                  }}
                   className="w-full py-2.5 rounded-xl text-gray-500 text-sm font-medium hover:bg-gray-50 transition-colors"
                 >
-                  Continuar aqui
+                  {canRate ? 'Calificar docente' : 'Continuar aqui'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ratingOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-7">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center">
+                <svg className="w-7 h-7 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                </svg>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-black text-gray-900">Califica a tu docente</h3>
+                <p className="text-sm text-gray-500 mt-1 leading-relaxed">
+                  Tu opinion ayuda a mejorar la experiencia para todos.
+                </p>
+              </div>
+
+              {/* Estrellas */}
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map(star => (
+                  <button
+                    key={star}
+                    onClick={() => setSelectedRating(star)}
+                    onMouseEnter={() => setHoveredRating(star)}
+                    onMouseLeave={() => setHoveredRating(0)}
+                    className="transition-transform hover:scale-110"
+                  >
+                    <svg
+                      className={`w-9 h-9 transition-colors ${
+                        star <= (hoveredRating || selectedRating)
+                          ? 'text-amber-400'
+                          : 'text-gray-200'
+                      }`}
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                    </svg>
+                  </button>
+                ))}
+              </div>
+
+              {/* Comentario opcional */}
+              <textarea
+                value={ratingComment}
+                onChange={e => setRatingComment(e.target.value)}
+                placeholder="Comentario opcional..."
+                rows={3}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:border-[#1B4F8C] transition-colors"
+              />
+
+              <div className="flex flex-col gap-2 w-full">
+                <button
+                  onClick={submitRating}
+                  disabled={selectedRating === 0 || submittingRating}
+                  className="w-full py-3 rounded-xl bg-[#1B4F8C] text-white text-sm font-bold hover:bg-[#163e6e] disabled:opacity-40 transition-colors"
+                >
+                  {submittingRating ? 'Enviando...' : 'Enviar calificacion'}
+                </button>
+                <button
+                  onClick={() => setRatingOpen(false)}
+                  className="w-full py-2.5 rounded-xl text-gray-400 text-sm font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Omitir
                 </button>
               </div>
             </div>
@@ -681,6 +827,13 @@ export default function CoursePlayerClient({
             pendingLessonRef.current = null
           }
         }} />
+      )}
+
+      {earnedBadges.length > 0 && (
+        <BadgeNotification
+          badges={earnedBadges}
+          onClose={() => setEarnedBadges([])}
+        />
       )}
     </div>
   )

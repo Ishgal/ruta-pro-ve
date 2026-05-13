@@ -295,10 +295,54 @@ export default function AdminDashboard() {
             <div className="bg-white rounded-lg p-6 shadow-lg border border-gray-100">
               <h3 className="font-bold mb-4 text-gray-800">Últimos usuarios</h3>
               <div className="space-y-3">
-                {recentData.recentUsers.slice(0, 3).map(user => (
-                  <div key={user.id} className="flex justify-between text-sm">
-                    <span className="text-gray-700">{user.name || user.email}</span>
-                    <span className="text-gray-400 text-xs">{new Date(user.createdAt).toLocaleDateString()}</span>
+                {recentData.recentUsers.slice(0, 4).map(user => (
+                  <div key={user.id} className="flex justify-between items-center text-sm">
+                    <div>
+                      <p className="text-gray-700 font-medium">{user.name || user.email}</p>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">{user.role}</p>
+                    </div>
+                    <span className="text-gray-400 text-xs">{new Date(user.createdAt).toLocaleDateString('es-VE')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {recentData && recentData.recentPayments.length > 0 && (
+            <div className="bg-white rounded-lg p-6 shadow-lg border border-gray-100">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-gray-800">Pagos recientes</h3>
+                <a href="/admin/payments" className="text-xs font-bold text-blue-600 hover:underline">Ver todos</a>
+              </div>
+              <div className="space-y-3">
+                {recentData.recentPayments.slice(0, 4).map(p => (
+                  <div key={p.id} className="flex justify-between items-center text-sm">
+                    <div className="min-w-0">
+                      <p className="text-gray-700 font-medium truncate">{p.userName}</p>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">{p.method.replace('_', ' ')}</p>
+                    </div>
+                    <div className="text-right shrink-0 ml-2">
+                      <p className="font-bold text-gray-800">${p.amount.toFixed(2)}</p>
+                      <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full ${
+                        p.status === 'paid' ? 'bg-green-100 text-green-700' :
+                        p.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>{p.status}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {recentData && recentData.recentLessonCompletions.length > 0 && (
+            <div className="bg-white rounded-lg p-6 shadow-lg border border-gray-100">
+              <h3 className="font-bold mb-4 text-gray-800">Actividad de lecciones</h3>
+              <div className="space-y-3">
+                {recentData.recentLessonCompletions.slice(0, 4).map((lc, i) => (
+                  <div key={i} className="text-sm">
+                    <p className="text-gray-700 font-medium truncate">{lc.userName}</p>
+                    <p className="text-[11px] text-gray-400 truncate">{lc.lessonTitle} · {lc.courseTitle}</p>
                   </div>
                 ))}
               </div>

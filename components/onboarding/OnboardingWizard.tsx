@@ -2,6 +2,72 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
+import confetti from 'canvas-confetti'
+import Ruty from '@/components/mascot/Ruty'
+
+// ─── PDF thumbnail ────────────────────────────────────────────────────────────
+
+const THUMB_W = 80  // CSS pixels
+
+function PdfThumbnail({ file }: { file: File }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [ready, setReady] = useState(false)
+  const [thumbH, setThumbH] = useState(104)
+
+  useEffect(() => {
+    let cancelled = false
+    async function render() {
+      try {
+        const pdfjs = await import('pdfjs-dist')
+        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
+        const data = await file.arrayBuffer()
+        const pdf = await pdfjs.getDocument({ data }).promise
+        if (cancelled) return
+        const page = await pdf.getPage(1)
+        if (cancelled) return
+        const canvas = canvasRef.current
+        if (!canvas) return
+
+        // Render at device pixel ratio for sharp output
+        const dpr = window.devicePixelRatio || 1
+        const vp = page.getViewport({ scale: 1 })
+        const scale = (THUMB_W * dpr) / vp.width
+        const scaled = page.getViewport({ scale })
+        const cssH = Math.round(scaled.height / dpr)
+
+        canvas.width = scaled.width
+        canvas.height = scaled.height
+        canvas.style.width = `${THUMB_W}px`
+        canvas.style.height = `${cssH}px`
+
+        const ctx = canvas.getContext('2d')!
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
+        await page.render({ canvasContext: ctx, viewport: scaled }).promise
+
+        if (!cancelled) { setThumbH(cssH); setReady(true) }
+      } catch { /* silently skip */ }
+    }
+    void render()
+    return () => { cancelled = true }
+  }, [file])
+
+  return (
+    <div
+      className="rounded-lg overflow-hidden bg-gray-50 border border-[#B3E8E8] flex-shrink-0 flex items-center justify-center shadow-sm"
+      style={{ width: THUMB_W, height: thumbH }}
+    >
+      {!ready && (
+        <svg className="w-4 h-4 text-gray-300 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+        </svg>
+      )}
+      <canvas ref={canvasRef} style={{ display: ready ? 'block' : 'none' }} />
+    </div>
+  )
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -60,7 +126,7 @@ const VE_STATES = [
   'Exterior',
 ]
 
-const TOTAL_STEPS = 6
+const TOTAL_STEPS = 7
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
 
@@ -113,9 +179,16 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
 
   // Form state
   const [step, setStep] = useState(1)
+  const [direction, setDirection] = useState<1 | -1>(1)
   const [data, setData] = useState<WizardData>(EMPTY)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+
+  // CV upload state
+  const [cvFile, setCvFile] = useState<File | null>(null)
+  const [cvUploading, setCvUploading] = useState(false)
+  const [cvUploaded, setCvUploaded] = useState(false)
+  const [cvUploadError, setCvUploadError] = useState('')
 
   // Phase state
   const [phase, setPhase] = useState<'form' | 'chat' | 'done'>('form')
@@ -130,6 +203,17 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
   // Route state
   const [generatedRoute, setGeneratedRoute] = useState<RouteData | null>(null)
   const [finishing, setFinishing] = useState(false)
+
+  // Confetti when route is ready
+  useEffect(() => {
+    if (phase !== 'done') return
+    confetti({
+      particleCount: 90,
+      spread: 65,
+      origin: { y: 0.4 },
+      colors: ['#00B5B5', '#F59E0B', '#1B4F8C', '#ffffff'],
+    })
+  }, [phase])
 
   // Auto-scroll chat to bottom
   useEffect(() => {
@@ -148,7 +232,6 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
     })
       .then(r => r.json())
       .then(json => {
-        setAiThinking(false)
         if (json.routeReady) {
           setGeneratedRoute(json.routeData)
           fetch('/api/onboarding', {
@@ -156,7 +239,10 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ generatedRoute: json.routeData, onboardingChat: [], assignedStartLevel: json.routeData.assignedStartLevel }),
           }).then(() => setPhase('done'))
-        } else if (json.reply) {
+          return
+        }
+        setAiThinking(false)
+        if (json.reply) {
           setMessages([{ role: 'ai', text: json.reply }])
         } else {
           setMessages([{ role: 'ai', text: 'Hubo un error al conectar con la IA. Recarga la pagina e intenta de nuevo.' }])
@@ -202,11 +288,13 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
 
   function next() {
     if (!validate()) return
+    setDirection(1)
     setStep(s => s + 1)
   }
 
   function back() {
     setError('')
+    setDirection(-1)
     setStep(s => s - 1)
   }
 
@@ -241,6 +329,35 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
     }
   }
 
+  async function uploadCv(file: File) {
+    setCvUploading(true)
+    setCvUploadError('')
+    const fd = new FormData()
+    fd.append('cv', file)
+    try {
+      const res = await fetch('/api/onboarding/cv', { method: 'POST', body: fd })
+      if (res.ok) {
+        setCvUploaded(true)
+      } else {
+        const json = await res.json().catch(() => ({}))
+        setCvUploadError((json as { error?: string }).error ?? 'Error al subir el CV')
+      }
+    } catch {
+      setCvUploadError('No se pudo subir el CV. Puedes continuar sin el.')
+    } finally {
+      setCvUploading(false)
+    }
+  }
+
+  function handleCvFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    if (!file) return
+    setCvFile(file)
+    setCvUploaded(false)
+    setCvUploadError('')
+    void uploadCv(file)
+  }
+
   // ── Chat helpers ──────────────────────────────────────────────────────────
 
   async function sendMessage(currentMessages: ChatMessage[]) {
@@ -252,13 +369,14 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
         body: JSON.stringify({ messages: currentMessages, profileData: data }),
       })
       const json = await res.json()
-      setAiThinking(false)
       if (json.routeReady) {
-        // Don't show the raw JSON — transition directly to route-ready screen
         setGeneratedRoute(json.routeData)
         await saveRouteToDb(json.routeData, currentMessages)
         setPhase('done')
-      } else if (json.reply) {
+        return
+      }
+      setAiThinking(false)
+      if (json.reply) {
         setMessages(prev => [...prev, { role: 'ai', text: json.reply }])
       } else {
         setMessages(prev => [...prev, { role: 'ai', text: 'Hubo un error. Intenta enviar tu mensaje de nuevo.' }])
@@ -311,17 +429,18 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
       <div className="min-h-screen bg-gradient-to-br from-[#0D2040] to-[#1B4F8C] flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-lg">
           <div className="bg-white rounded-2xl shadow-xl p-7">
-            {/* Success icon */}
-            <div className="flex justify-center mb-5">
-              <div className="w-16 h-16 rounded-full bg-[#E6F8F8] flex items-center justify-center">
-                <svg className="w-8 h-8 text-[#00B5B5]" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                </svg>
-              </div>
-            </div>
+            {/* Ruty celebrando */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
+              className="flex justify-center mb-3"
+            >
+              <Ruty pose="celebrando" size={130} />
+            </motion.div>
 
             <h2 className="text-xl font-bold text-gray-900 text-center mb-1">Tu ruta esta lista</h2>
-            <p className="text-sm text-gray-500 text-center mb-5">Valeria analizo tu perfil y preparo este plan personalizado para ti.</p>
+            <p className="text-sm text-gray-500 text-center mb-5">Ruty analizo tu perfil y preparo este plan personalizado para ti.</p>
 
             {/* AI summary */}
             <div className="bg-[#F0FAFA] border border-[#B3E8E8] rounded-xl px-4 py-3.5 mb-5">
@@ -363,66 +482,106 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // PHASE: chat — Valeria interviewer
+  // PHASE: chat — Ruty Duolingo-style interview
   // ─────────────────────────────────────────────────────────────────────────
 
   if (phase === 'chat') {
+    const lastAiMsg = [...messages].reverse().find(m => m.role === 'ai')
+    const aiMessageCount = messages.filter(m => m.role === 'ai').length
+
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0D2040] to-[#1B4F8C] flex flex-col">
+      <div className="min-h-screen bg-gradient-to-br from-[#0D2040] to-[#1B4F8C] flex justify-center">
+        {/* Contenedor fijo ancho-telefono — centrado en desktop */}
+        <div className="w-full max-w-[420px] flex flex-col min-h-screen">
 
-        {/* Chat header */}
-        <div className="px-4 pt-6 pb-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#00B5B5] flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-sm">V</span>
+          {/* Header */}
+          <div className="flex items-center justify-center pt-5 pb-0">
+            <p className="text-white/40 text-[11px] font-semibold tracking-widest uppercase">Entrevista de perfil</p>
           </div>
-          <div>
-            <p className="text-white font-semibold text-sm leading-tight">Valeria</p>
-            <p className="text-[#8BAECE] text-xs">Coach IA · Ruta Pro-VE</p>
-          </div>
-        </div>
 
-        {/* Messages area */}
-        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-1">
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} mb-1`}>
-              <div className={`max-w-[78%] px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                msg.role === 'user'
-                  ? 'bg-[#00B5B5] text-white rounded-br-sm'
-                  : 'bg-white/95 text-gray-800 rounded-bl-sm'
-              }`}>
-                {msg.text}
+          {/* Ruty + burbuja — flex row, Ruty izquierda, burbuja derecha */}
+          <div className="flex-1 flex items-center px-3 gap-3">
+
+            {/* Ruty — izquierda */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={aiThinking ? 'ruty-thinking' : 'ruty-talking'}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                style={{ flexShrink: 0 }}
+              >
+                <Ruty pose={aiThinking ? 'pensando' : 'hablando'} size={200} />
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Burbuja — derecha, crece para llenar el espacio */}
+            <div className="flex-1 relative">
+              {/* Cola apuntando hacia Ruty */}
+              <div
+                className="absolute -left-3 top-6 w-6 h-6 bg-white rotate-45 rounded-sm"
+                style={{ zIndex: 0 }}
+              />
+              <div className="relative z-10 bg-white rounded-2xl px-4 py-4 shadow-2xl min-h-[72px] flex items-center">
+                <AnimatePresence mode="wait">
+                  {aiThinking ? (
+                    <motion.div
+                      key="dots"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="flex gap-2 py-1"
+                    >
+                      <span className="w-2.5 h-2.5 bg-[#00B5B5] rounded-full animate-bounce [animation-delay:-0.3s]" />
+                      <span className="w-2.5 h-2.5 bg-[#00B5B5] rounded-full animate-bounce [animation-delay:-0.15s]" />
+                      <span className="w-2.5 h-2.5 bg-[#00B5B5] rounded-full animate-bounce" />
+                    </motion.div>
+                  ) : (
+                    <motion.p
+                      key={`msg-${aiMessageCount}`}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={{ duration: 0.25, ease: 'easeOut' }}
+                      className="text-sm text-gray-800 leading-relaxed"
+                    >
+                      {lastAiMsg?.text ?? ''}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
-          ))}
-          {aiThinking && <ThinkingBubble />}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input bar */}
-        <div className="px-4 pb-6 pt-2">
-          <div className="flex gap-2 bg-white/10 backdrop-blur-sm rounded-2xl p-1.5">
-            <textarea
-              value={inputValue}
-              onChange={e => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Escribe tu respuesta..."
-              rows={1}
-              disabled={aiThinking}
-              className="flex-1 bg-transparent text-white placeholder:text-white/50 text-sm px-3 py-2 resize-none focus:outline-none leading-relaxed disabled:opacity-50"
-              style={{ minHeight: '40px', maxHeight: '120px' }}
-            />
-            <button
-              type="button"
-              onClick={() => void handleSend()}
-              disabled={!inputValue.trim() || aiThinking}
-              className="w-10 h-10 rounded-xl bg-[#00B5B5] hover:bg-[#009999] flex items-center justify-center flex-shrink-0 self-end transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-              </svg>
-            </button>
           </div>
-          <p className="text-center text-white/30 text-xs mt-2">Presiona Enter para enviar</p>
+
+          {/* Input */}
+          <div className="px-4 pb-8 pt-3">
+            <div className="flex gap-2 bg-white/10 backdrop-blur-sm rounded-2xl p-1.5">
+              <textarea
+                value={inputValue}
+                onChange={e => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Escribe tu respuesta..."
+                rows={1}
+                disabled={aiThinking}
+                className="flex-1 bg-transparent text-white placeholder:text-white/50 text-sm px-3 py-2 resize-none focus:outline-none leading-relaxed disabled:opacity-50"
+                style={{ minHeight: '40px', maxHeight: '100px' }}
+              />
+              <motion.button
+                type="button"
+                onClick={() => void handleSend()}
+                disabled={!inputValue.trim() || aiThinking}
+                whileTap={{ scale: 0.88 }}
+                className="w-10 h-10 rounded-xl bg-[#00B5B5] hover:bg-[#009999] flex items-center justify-center flex-shrink-0 self-end transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                </svg>
+              </motion.button>
+            </div>
+            <p className="text-center text-white/30 text-xs mt-2">Presiona Enter para enviar</p>
+          </div>
         </div>
       </div>
     )
@@ -433,18 +592,18 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0D2040] to-[#1B4F8C] flex items-center justify-center px-4 py-10">
+    <div className="min-h-screen bg-gradient-to-br from-[#0D2040] to-[#1B4F8C] flex items-center justify-center px-4 py-4 md:py-10">
       <div className="w-full max-w-lg">
 
         {/* Logo / greeting */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-4 md:mb-8">
           <p className="text-[#8BAECE] text-sm mb-1">Bienvenido, {firstName}</p>
           <h1 className="text-white text-2xl font-bold">Construyamos tu ruta de aprendizaje</h1>
-          <p className="text-[#8BAECE] text-sm mt-2">Solo toma unos minutos. Cuentanos sobre ti.</p>
+          <p className="text-[#8BAECE] text-sm mt-1">Solo toma unos minutos. Cuentanos sobre ti.</p>
         </div>
 
         {/* Progress bar */}
-        <div className="flex gap-1.5 mb-6">
+        <div className="flex gap-1.5 mb-4 md:mb-6">
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <div
               key={i}
@@ -456,7 +615,22 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-7">
+        <div className="bg-white rounded-2xl shadow-xl p-5 md:p-7">
+
+          <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={step}
+            custom={direction}
+            variants={{
+              enter: (dir: number) => ({ x: dir > 0 ? 50 : -50, opacity: 0 }),
+              center: { x: 0, opacity: 1 },
+              exit: (dir: number) => ({ x: dir > 0 ? -50 : 50, opacity: 0 }),
+            }}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+          >
 
           {/* ── STEP 1 ── Identidad */}
           {step === 1 && (
@@ -726,31 +900,131 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
             </div>
           )}
 
-          {/* ── STEP 6 ── Transicion a IA */}
+          {/* ── STEP 6 ── CV upload (opcional) */}
           {step === 6 && (
             <div>
-              <StepHeader step={6} title="Casi listo" subtitle="Ahora Valeria, nuestra coach IA, terminara de conocerte en una breve entrevista." />
+              <StepHeader step={6} title="Tu curriculum vitae" subtitle="Opcional — si lo tienes listo, Valeria lo usara para conocerte mejor y personalizar tu ruta." />
 
-              <div className="border border-gray-100 rounded-xl p-5 mb-5 flex gap-4 items-start">
-                <div className="w-12 h-12 rounded-full bg-[#00B5B5] flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-bold">V</span>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800 mb-1">Valeria, tu coach personal</p>
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    Voy a hacerte unas preguntas rapidas para entender mejor tu situacion y armar una ruta de aprendizaje que de verdad se adapte a ti. No hay respuestas incorrectas.
-                  </p>
-                </div>
-              </div>
+              {!cvFile && !cvUploaded && (
+                <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-[#00B5B5] hover:bg-[#F0FAFA] transition-all group">
+                  <svg className="w-8 h-8 text-gray-300 group-hover:text-[#00B5B5] mb-2 transition-colors" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                  </svg>
+                  <span className="text-sm font-semibold text-gray-500 group-hover:text-[#007B7D] transition-colors">Seleccionar PDF</span>
+                  <span className="text-xs text-gray-400 mt-1">Maximo 5 MB</span>
+                  <input type="file" accept="application/pdf" className="hidden" onChange={handleCvFileChange} />
+                </label>
+              )}
 
-              <div className="bg-[#E8F0FB] rounded-xl px-4 py-3.5">
+              {cvFile && !cvUploaded && (
+                <div className={`flex items-center gap-3 w-full px-4 py-3.5 rounded-xl border bg-gray-50 ${cvUploadError ? 'border-amber-300' : 'border-gray-200'}`}>
+                  <svg className="w-5 h-5 text-red-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14.25 2.25H6A2.25 2.25 0 003.75 4.5v15A2.25 2.25 0 006 21.75h12A2.25 2.25 0 0020.25 19.5V8.25l-6-6zm0 0v6h6" />
+                  </svg>
+                  <span className="text-sm text-gray-700 flex-1 truncate">{cvFile.name}</span>
+                  {cvUploading ? (
+                    <svg className="w-4 h-4 text-[#00B5B5] animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { setCvFile(null); setCvUploaded(false); setCvUploadError('') }}
+                      className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-200 transition-colors flex-shrink-0"
+                      title="Quitar archivo"
+                    >
+                      <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {cvUploadError && (
+                <div className="mt-2 flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-amber-50">
+                  <p className="text-xs text-amber-700">{cvUploadError}</p>
+                  <button
+                    type="button"
+                    onClick={() => cvFile && void uploadCv(cvFile)}
+                    className="text-xs font-semibold text-amber-700 hover:text-amber-900 whitespace-nowrap flex-shrink-0"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              )}
+
+              {cvUploaded && cvFile && (
+                <div className="rounded-xl border border-[#00B5B5] bg-[#E6F8F8] overflow-hidden">
+                  {/* Preview + info */}
+                  <div className="flex items-start gap-3 p-3">
+                    <PdfThumbnail file={cvFile} />
+                    <div className="flex-1 min-w-0 pt-1">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <svg className="w-3.5 h-3.5 text-[#00B5B5] flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                        <span className="text-xs font-bold text-[#007B7D] uppercase tracking-wide">Listo</span>
+                      </div>
+                      <p className="text-sm font-semibold text-gray-800 truncate leading-tight">{cvFile.name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">PDF · {(cvFile.size / 1024).toFixed(0)} KB</p>
+                    </div>
+                  </div>
+
+                  {/* Action bar */}
+                  <div className="flex border-t border-[#C2EDED]">
+                    <label className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-semibold text-[#007B7D] hover:bg-[#D4F4F4] cursor-pointer transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                      </svg>
+                      Cambiar archivo
+                      <input type="file" accept="application/pdf" className="hidden" onChange={handleCvFileChange} />
+                    </label>
+                    <div className="w-px bg-[#C2EDED]" />
+                    <button
+                      type="button"
+                      onClick={() => { setCvFile(null); setCvUploaded(false); setCvUploadError('') }}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-semibold text-red-500 hover:bg-red-50 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                      </svg>
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-xs text-gray-400 mt-4 text-center">
+                Si no tienes CV disponible, puedes continuar sin el.
+              </p>
+            </div>
+          )}
+
+          {/* ── STEP 7 ── Transicion a IA */}
+          {step === 7 && (
+            <div className="flex flex-col items-center text-center -mt-1">
+              <span className="text-xs font-semibold text-[#00B5B5] uppercase tracking-widest mb-2">Paso 7 de {TOTAL_STEPS}</span>
+
+              <Ruty pose="hablando" size={160} className="mb-1" />
+
+              <h2 className="text-xl font-bold text-gray-900 mb-1">Casi listo</h2>
+              <p className="text-sm text-gray-500 leading-snug mb-4 max-w-[260px]">
+                Voy a hacerte unas preguntas rapidas para armar una ruta que se adapte a ti.
+              </p>
+
+              <div className="bg-[#E8F0FB] rounded-xl px-4 py-3 w-full text-left">
                 <p className="text-xs text-[#1B4F8C] font-medium">La entrevista toma 3 a 5 minutos</p>
                 <p className="text-xs text-[#1B4F8C]/70 mt-0.5">
-                  Con tus respuestas, Valeria generara una ruta personalizada con los cursos mas relevantes para tu perfil y objetivo.
+                  Con tus respuestas, Ruty generara una ruta con los cursos mas relevantes para tu perfil.
                 </p>
               </div>
             </div>
           )}
+
+          </motion.div>
+          </AnimatePresence>
 
           {/* Error */}
           {error && (
@@ -766,14 +1040,14 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
               </button>
             )}
             {step < TOTAL_STEPS ? (
-              <button type="button" onClick={next}
-                className="flex-1 py-3 rounded-xl bg-[#00B5B5] hover:bg-[#009999] text-white text-sm font-semibold transition-all">
-                Continuar
+              <button type="button" onClick={next} disabled={step === 6 && cvUploading}
+                className="flex-1 py-3 rounded-xl bg-[#00B5B5] hover:bg-[#009999] text-white text-sm font-semibold transition-all disabled:opacity-60">
+                {step === 6 && cvUploading ? 'Subiendo CV...' : 'Continuar'}
               </button>
             ) : (
               <button type="button" onClick={handleSubmit} disabled={saving}
                 className="flex-1 py-3 rounded-xl bg-[#1B4F8C] hover:bg-[#163d70] text-white text-sm font-semibold transition-all disabled:opacity-60">
-                {saving ? 'Procesando...' : 'Iniciar entrevista con Valeria'}
+                {saving ? 'Procesando...' : 'Iniciar entrevista con Ruty'}
               </button>
             )}
           </div>

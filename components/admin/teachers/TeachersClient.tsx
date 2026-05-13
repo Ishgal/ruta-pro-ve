@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Star, BookOpen, Plus, Trash2, X, BookMarked } from 'lucide-react'
+import { Star, BookOpen, Plus, Trash2, X, BookMarked, Eye } from 'lucide-react'
 import AssignCoursesModal from './AssignCoursesModal'
 
 // Definimos el tipo TeacherWithRating
@@ -15,7 +15,7 @@ export interface TeacherWithRating {
   setupStatus: string
   createdAt: Date | null
   rating: number
-  courses: { id: string; title: string; isPublished: boolean | null }[]
+  courses: { id: string; title: string; isPublished: boolean | null; level?: { name: string } | null }[]
 }
 
 interface Props {
@@ -36,6 +36,7 @@ export default function TeachersClient({ initialTeachers = [] }: Props) {
   const [isSaving, setIsSaving] = useState(false)
   const [showCoursesModal, setShowCoursesModal] = useState(false)
   const [selectedTeacherForCourses, setSelectedTeacherForCourses] = useState<TeacherWithRating | null>(null)
+  const [viewCoursesTeacher, setViewCoursesTeacher] = useState<TeacherWithRating | null>(null)
 
   function showError(msg: string) {
     setError(msg)
@@ -191,16 +192,13 @@ export default function TeachersClient({ initialTeachers = [] }: Props) {
                     {!teacher.courses || teacher.courses.length === 0 ? (
                       <span className="text-xs text-gray-400">—</span>
                     ) : (
-                      <div className="flex flex-col gap-1 max-w-xs">
-                        {teacher.courses.slice(0, 2).map(course => (
-                          <span key={course.id} className="text-xs bg-gray-500 px-2 py-0.5 rounded-full inline-block w-fit">
-                            {course.title}
-                          </span>
-                        ))}
-                        {teacher.courses.length > 2 && (
-                          <span className="text-xs text-gray-400">+{teacher.courses.length - 2} más</span>
-                        )}
-                      </div>
+                      <button
+                        onClick={() => setViewCoursesTeacher(teacher)}
+                        className="inline-flex items-center gap-1.5 text-xs text-teal-600 hover:text-teal-700 font-medium"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        {teacher.courses.length} curso{teacher.courses.length !== 1 ? 's' : ''}
+                      </button>
                     )}
                   </td>
                   <td className="px-5 py-4">
@@ -385,6 +383,46 @@ export default function TeachersClient({ initialTeachers = [] }: Props) {
             <button onClick={() => setGeneratedLink(null)} className="w-full py-2.5 rounded-xl bg-gray-900 hover:bg-gray-700 text-white font-semibold">
               Cerrar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Ver cursos asignados */}
+      {viewCoursesTeacher && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h2 className="text-base font-bold text-gray-900">Cursos asignados</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{viewCoursesTeacher.name || viewCoursesTeacher.email}</p>
+              </div>
+              <button onClick={() => setViewCoursesTeacher(null)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="px-6 py-4 max-h-[60vh] overflow-y-auto space-y-2">
+              {viewCoursesTeacher.courses.map(course => (
+                <div key={course.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <BookOpen className="w-4 h-4 text-teal-500 shrink-0" />
+                    <div>
+                      <p className="text-sm text-gray-800 font-medium">{course.title}</p>
+                      {course.level?.name && (
+                        <p className="text-xs text-gray-400">{course.level.name}</p>
+                      )}
+                    </div>
+                  </div>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${course.isPublished ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                    {course.isPublished ? 'Publicado' : 'Borrador'}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
+              <button onClick={() => setViewCoursesTeacher(null)} className="px-5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold transition-colors">
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}

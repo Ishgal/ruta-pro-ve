@@ -58,7 +58,7 @@ type CourseForPrompt = {
   careers: string[]
 }
 
-function buildSystemPrompt(firstName: string, profile: ProfileData, courses: CourseForPrompt[]) {
+function buildSystemPrompt(firstName: string, profile: ProfileData, courses: CourseForPrompt[], cvNotes?: string | null) {
   const strengths = profile.declaredStrengths.length > 0
     ? profile.declaredStrengths.map(s => `${s.skill} (${s.level})`).join(', ')
     : 'ninguna declarada aún'
@@ -71,7 +71,11 @@ function buildSystemPrompt(firstName: string, profile: ProfileData, courses: Cou
     .map(c => `  - ID:${c.id} | "${c.title}" | Nivel ${c.levelId} | Tags: ${c.skillsTags.join(', ')}`)
     .join('\n')
 
-  return `Eres Valeria, coach de carrera de Ruta Pro-VE, una plataforma EdTech venezolana que conecta a jóvenes con el mercado laboral. Tu trabajo es hacer una entrevista breve y amigable al estudiante para entender en profundidad sus metas, contexto y brechas — y luego generar una ruta de aprendizaje personalizada.
+  const cvSection = cvNotes
+    ? `\n## CV del estudiante (texto extraído)\n${cvNotes}\n\nUsa esta información para entender mejor su trayectoria, proyectos y habilidades reales. No menciones explícitamente que leíste su CV — integra ese conocimiento de forma natural en la conversación.\n`
+    : ''
+
+  return `Eres Ruty, la guia de aprendizaje de Ruta Pro-VE, una plataforma EdTech venezolana que conecta a jóvenes con el mercado laboral. Tu trabajo es hacer una entrevista breve y amigable al estudiante para entender en profundidad sus metas, contexto y brechas — y luego generar una ruta de aprendizaje personalizada.
 
 ## Perfil del estudiante (del formulario de registro)
 - Nombre: ${firstName}
@@ -84,7 +88,7 @@ function buildSystemPrompt(firstName: string, profile: ProfileData, courses: Cou
 - Disponibilidad: ${HOURS_LABELS[profile.weeklyHours] ?? profile.weeklyHours}
 - Ubicación: ${profile.location}
 - Fortalezas declaradas: ${strengths}
-
+${cvSection}
 ## Catálogo de cursos disponibles
 ${courseList}
 
@@ -92,7 +96,8 @@ ${courseList}
 1. Haz UNA sola pregunta a la vez. Sé conversacional, cálida y empática — habla como una persona real, no como un bot.
 2. Construye sobre las respuestas anteriores. No repitas lo que el estudiante ya mencionó.
 3. Profundiza en: aspiraciones concretas, áreas en las que se siente más inseguro, contexto inmediato (¿está aplicando a empleos? ¿tiene algún examen pronto? ¿ya sabe qué empresa quiere?).
-4. Después de 3 a 5 intercambios, cuando tengas suficiente contexto para armar una ruta sólida, responde ÚNICAMENTE con este JSON (sin ningún texto adicional antes ni después):
+4. LONGITUD: Máximo 2 oraciones cortas por respuesta. Ve directo al punto — no expliques, no rellenes, no des contexto innecesario. Solo saluda/reacciona brevemente y pregunta.
+5. Después de 3 a 5 intercambios, cuando tengas suficiente contexto para armar una ruta sólida, responde ÚNICAMENTE con este JSON (sin ningún texto adicional antes ni después):
 
 {
   "type": "route_ready",
@@ -116,7 +121,7 @@ ${courseList}
 ## Idioma y tono
 Siempre en español venezolano. Cálida, alentadora, directa — como una mentora que se preocupa de verdad.
 
-Cuando recibas "[INICIO_ENTREVISTA]", preséntate brevemente (2 líneas máximo) y haz tu primera pregunta.
+Cuando recibas "[INICIO_ENTREVISTA]", saluda al estudiante por su nombre y haz tu primera pregunta directamente. Sin presentaciones largas — ve al grano en 1 o 2 frases cortas y cálidas.
 
 ## REGLA CRÍTICA — ENTREGA DE LA RUTA
 Cuando ya tengas suficiente información (3-5 intercambios), tu ÚNICO mensaje de respuesta debe ser el bloque JSON. Sin introducción. Sin frase de cierre. Sin explicaciones. Sin "aquí está tu ruta". SOLO el JSON en crudo, empezando exactamente con { y terminando exactamente con }. Nada antes. Nada después.`
@@ -162,7 +167,10 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { name: true } })
+  const [dbUser, studentProfile] = await Promise.all([
+    prisma.user.findUnique({ where: { id: user.id }, select: { name: true } }),
+    prisma.studentProfile.findUnique({ where: { userId: user.id }, select: { cvAnalysisNotes: true } }),
+  ])
   const firstName = dbUser?.name?.split(' ')[0] ?? 'estudiante'
 
   const body = await request.json()
@@ -174,7 +182,7 @@ export async function POST(request: NextRequest) {
     orderBy: [{ levelId: 'asc' }, { createdAt: 'asc' }],
   })
 
-  const systemInstruction = buildSystemPrompt(firstName, profileData, courses)
+  const systemInstruction = buildSystemPrompt(firstName, profileData, courses, studentProfile?.cvAnalysisNotes)
 
   // Gemini requires contents to start with 'user' role.
   // When messages is empty (first call), send the trigger phrase.

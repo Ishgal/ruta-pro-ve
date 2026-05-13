@@ -108,7 +108,7 @@ export default async function DashboardPage() {
 
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-5 py-5 md:px-8">
-        <div className="flex items-start justify-between max-w-4xl">
+        <div className="flex items-start justify-between w-full">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Hola, {firstName}</h1>
             <p className="text-sm text-gray-500 mt-0.5">
@@ -149,7 +149,7 @@ export default async function DashboardPage() {
 
         {/* Progress summary */}
         {courses.length > 0 && (
-          <div className="mt-4 max-w-4xl">
+          <div className="mt-4 w-full">
             <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
               <span>{completedCount} de {courses.length} cursos completados</span>
               <span>{Math.round((completedCount / courses.length) * 100)}%</span>

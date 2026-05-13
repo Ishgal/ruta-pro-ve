@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { logoutAction } from '@/app/actions/logout.actions'
 
-const navItems = [
+const baseNavItems = [
   {
     href: '/dashboard',
     label: 'Home',
@@ -43,8 +43,26 @@ const navItems = [
   },
 ]
 
-export default function Sidebar() {
+const messagesNavItem = {
+  href: '/dashboard/messages',
+  label: 'Mensajes',
+  icon: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+    </svg>
+  ),
+}
+
+const PLAN_PILL: Record<string, { label: string; cls: string }> = {
+  bronce: { label: 'Bronce', cls: 'bg-orange-50 text-orange-500' },
+  plata:  { label: 'Plata',  cls: 'bg-slate-100 text-slate-500' },
+  oro:    { label: 'Oro',    cls: 'bg-amber-100 text-amber-600' },
+}
+
+export default function Sidebar({ isOro = false, plan = 'bronce' }: { isOro?: boolean; plan?: string }) {
   const pathname = usePathname()
+  const navItems = isOro ? [...baseNavItems, messagesNavItem] : baseNavItems
+  const pill = PLAN_PILL[plan] ?? PLAN_PILL.bronce
 
   return (
     <aside className="hidden md:flex flex-col w-56 shrink-0 bg-white border-r border-gray-100 h-full px-4 py-6">
@@ -90,12 +108,22 @@ export default function Sidebar() {
       </form>
 
       {/* Upgrade card */}
-      <Link href="/dashboard/plans" className="rounded-2xl bg-[#007B7D] px-4 py-5 text-white block hover:bg-[#006364] transition-colors">
-        <p className="font-bold text-sm tracking-wide mb-1">Mejora tu plan</p>
-        <p className="text-xs text-white/80 leading-snug">
-          Sin anuncios, descuentos en certificados y mentoria.
-        </p>
-      </Link>
+      {plan === 'bronce' && (
+        <Link href="/dashboard/plans" className="rounded-2xl bg-[#007B7D] px-4 py-5 text-white block hover:bg-[#006364] transition-colors">
+          <p className="font-bold text-sm tracking-wide mb-1">Mejora tu plan</p>
+          <p className="text-xs text-white/80 leading-snug">
+            Sin anuncios, descuentos en certificados y mentoria.
+          </p>
+        </Link>
+      )}
+      {plan === 'plata' && (
+        <Link href="/dashboard/plans" className="rounded-2xl bg-[#1B4F8C] px-4 py-5 text-white block hover:bg-[#163e6e] transition-colors">
+          <p className="font-bold text-sm tracking-wide mb-1">Actualizar a ORO</p>
+          <p className="text-xs text-white/80 leading-snug">
+            Mentoria 1:1, mas cupones de certificado y acceso completo.
+          </p>
+        </Link>
+      )}
     </aside>
   )
 }

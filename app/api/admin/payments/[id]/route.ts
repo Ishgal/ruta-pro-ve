@@ -18,7 +18,7 @@ export async function PATCH(
 
   const payment = await prisma.payment.findUnique({
     where: { id },
-    select: { id: true, status: true, certificateId: true, subscriptionId: true, userId: true },
+    select: { id: true, status: true, certificateId: true, subscriptionId: true, extraCourseEnrollmentId: true, userId: true },
   })
   if (!payment) return NextResponse.json({ error: 'Pago no encontrado' }, { status: 404 })
   if (payment.status !== 'pending') return NextResponse.json({ error: 'Pago ya procesado' }, { status: 400 })
@@ -74,6 +74,26 @@ export async function PATCH(
           })
         ),
       ])
+    } else if (payment.extraCourseEnrollmentId) {
+      // Extra course payment — activate enrollment and create progress record
+      const enrollment = await prisma.extraCourseEnrollment.findUnique({
+        where: { id: payment.extraCourseEnrollmentId },
+        select: { courseId: true, userId: true },
+      })
+      if (!enrollment) return NextResponse.json({ error: 'Matricula no encontrada' }, { status: 404 })
+
+      await prisma.$transaction([
+        prisma.payment.update({ where: { id }, data: { status: 'paid', paidAt: new Date() } }),
+        prisma.extraCourseEnrollment.update({
+          where: { id: payment.extraCourseEnrollmentId },
+          data: { status: 'active' },
+        }),
+        prisma.userCourseProgress.upsert({
+          where: { userId_courseId: { userId: enrollment.userId, courseId: enrollment.courseId } },
+          create: { userId: enrollment.userId, courseId: enrollment.courseId, status: 'not_started', progressPercent: 0 },
+          update: {},
+        }),
+      ])
     }
     return NextResponse.json({ ok: true, action: 'approved' })
   }
@@ -91,6 +111,13 @@ export async function PATCH(
       await prisma.certDiscount.updateMany({
         where: { paymentId: id, usedAt: null },
         data: { paymentId: null },
+      })
+    }
+    // Mark extra course enrollment as rejected
+    if (payment.extraCourseEnrollmentId) {
+      await prisma.extraCourseEnrollment.update({
+        where: { id: payment.extraCourseEnrollmentId },
+        data: { status: 'rejected' },
       })
     }
     return NextResponse.json({ ok: true, action: 'rejected' })

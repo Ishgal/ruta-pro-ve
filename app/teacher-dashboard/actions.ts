@@ -15,6 +15,7 @@ interface FormattedMessage {
   content: string;
   createdAt: Date;
   isRead: boolean;
+  isFromTeacher: boolean;
 }
 
 export interface ProgressPeriodData {
@@ -59,6 +60,7 @@ export async function sendMessage(formData: FormData) {
         student_id: studentId,
         content: content.trim(),
         is_read: false,
+        is_from_teacher: true,
       },
     });
 
@@ -75,7 +77,7 @@ export async function getMessages(): Promise<FormattedMessage[]> {
 
   const messages = await prisma.teacher_messages.findMany({
     where: { teacher_id: teacher.id },
-    orderBy: { created_at: 'desc' },
+    orderBy: { created_at: 'asc' },
   });
 
   if (messages.length === 0) {
@@ -92,7 +94,7 @@ export async function getMessages(): Promise<FormattedMessage[]> {
       id: true,
       name: true,
       email: true,
-      avatar_url: true,
+      avatarUrl: true,
     },
   });
 
@@ -106,10 +108,11 @@ export async function getMessages(): Promise<FormattedMessage[]> {
       id: msg.id,
       studentId: msg.student_id,
       studentName: student?.name || 'Estudiante',
-      studentAvatar: student?.avatar_url || null,
+      studentAvatar: student?.avatarUrl || null,
       content: msg.content,
       createdAt: msg.created_at || new Date(),
       isRead: msg.is_read || false,
+      isFromTeacher: msg.is_from_teacher ?? true,
     };
   });
 }

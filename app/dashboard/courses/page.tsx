@@ -44,18 +44,21 @@ export default async function CoursesPage() {
     .map(item => courseMap.get(item.courseId))
     .filter((c): c is NonNullable<typeof c> => c !== undefined)
 
+  const allCompleted = orderedCourses.length > 0 &&
+    orderedCourses.every(c => progressMap.get(c.id)?.status === 'completed')
+
   return (
     <div className="min-h-screen bg-[#F4F6F9] px-4 py-6 md:px-8">
-      <div className="max-w-2xl">
-        <h1 className="text-xl font-bold text-gray-900 mb-0.5">Mis cursos</h1>
-        <p className="text-sm text-gray-500 mb-6">Tu ruta de aprendizaje personalizada por Valeria</p>
+      <h1 className="text-xl font-bold text-gray-900 mb-0.5">Mis cursos</h1>
+      <p className="text-sm text-gray-500 mb-6">Tu ruta de aprendizaje personalizada por Ruty</p>
 
         {orderedCourses.length === 0 ? (
           <div className="text-center py-16 text-gray-400 text-sm">
             Completa el onboarding para ver tus cursos.
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
+          <>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {orderedCourses.map((course, i) => {
               const p = progressMap.get(course.id)
               const status = p?.status ?? 'not_started'
@@ -142,8 +145,30 @@ export default async function CoursesPage() {
               )
             })}
           </div>
+
+          {/* Botón explorar — desbloqueado al terminar toda la ruta */}
+          <div className="mt-4 w-full">
+            {allCompleted ? (
+              <Link
+                href="/dashboard/courses/explore"
+                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-[#1B4F8C] hover:bg-[#163e6e] text-white text-sm font-semibold transition-colors shadow-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+                Explorar mas cursos
+              </Link>
+            ) : (
+              <div className="flex items-center justify-center gap-2.5 w-full py-3.5 rounded-2xl border-2 border-dashed border-gray-200 text-gray-400 text-sm font-semibold cursor-not-allowed select-none">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+                Explorar mas cursos — completa tu ruta primero
+              </div>
+            )}
+          </div>
+          </>
         )}
-      </div>
     </div>
   )
 }

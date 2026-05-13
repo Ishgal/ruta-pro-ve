@@ -1,8 +1,8 @@
-// hooks/useRealtimeMessages.ts
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import { getMessages } from '@/app/teacher-dashboard/actions';
 
-interface Message {
+export interface RealtimeMessage {
   id: string;
   studentId: string;
   studentName: string;
@@ -10,81 +10,118 @@ interface Message {
   content: string;
   createdAt: Date;
   isRead: boolean;
+  isFromTeacher: boolean;
 }
 
 interface UseRealtimeMessagesProps {
-  onNewMessage?: (message: Message) => void;
+  onNewMessage?: (message: RealtimeMessage) => void;
   onMessageRead?: (messageId: string) => void;
+  // pollingInterval kept for backwards-compat but ignored — Realtime is used instead
   pollingInterval?: number;
 }
 
-export function useRealtimeMessages({ 
-  onNewMessage, 
-  onMessageRead, 
-  pollingInterval = 5000 
+export function useRealtimeMessages({
+  onNewMessage,
+  onMessageRead,
 }: UseRealtimeMessagesProps = {}) {
-  const [isConnected, setIsConnected] = useState(true);
-  const [lastMessage, setLastMessage] = useState<Message | null>(null);
-  const [knownMessageIds, setKnownMessageIds] = useState<Set<string>>(new Set());
+  const [isConnected, setIsConnected] = useState(false);
+  const knownIdsRef = useRef<Set<string>>(new Set());
+  const onNewMessageRef = useRef(onNewMessage);
+  const onMessageReadRef = useRef(onMessageRead);
 
-  const fetchMessages = useCallback(async () => {
-    try {
-      const messages = await getMessages();
-      
-      // Detectar nuevos mensajes (los que no conocemos)
-      const newMessages = messages.filter((message: Message) => !knownMessageIds.has(message.id));
-      
-      // Procesar cada mensaje nuevo
-      for (const message of newMessages) {
-        // Agregar a la lista de mensajes conocidos
-        setKnownMessageIds((prev: Set<string>) => new Set([...prev, message.id]));
-        
-        // Notificar sobre nuevos mensajes no leídos
-        if (!message.isRead) {
-          setLastMessage(message);
-          onNewMessage?.(message);
-        }
-      }
-      
-      // Detectar mensajes que cambiaron a leídos
-      const currentUnreadIds = new Set(
-        messages.filter((message: Message) => !message.isRead).map((message: Message) => message.id)
-      );
-      
-      const previouslyUnreadIds = Array.from(knownMessageIds).filter(
-        (id: string) => !currentUnreadIds.has(id)
-      );
-      
-      for (const id of previouslyUnreadIds) {
-        onMessageRead?.(id);
-      }
-      
-      setIsConnected(true);
-    } catch (error) {
-      console.error('Error polling messages:', error);
-      setIsConnected(false);
-    }
-  }, [knownMessageIds, onNewMessage, onMessageRead]);
+  // Keep refs current without restarting the subscription
+  onNewMessageRef.current = onNewMessage;
+  onMessageReadRef.current = onMessageRead;
 
-  // Cargar mensajes iniciales para poblar knownMessageIds
   useEffect(() => {
-    const init = async () => {
-      const messages = await getMessages();
-      const ids = new Set(messages.map((message: Message) => message.id));
-      setKnownMessageIds(ids);
+    const supabase = createClient();
+    let channelRef: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+
+    const setup = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+
+      // 1. Seed knownIds from current messages so existing messages don't trigger onNewMessage
+      const initial = await getMessages();
+      if (cancelled) return;
+      knownIdsRef.current = new Set(initial.map(m => m.id));
+
+      // 2. Remove any stale channel with the same name before subscribing (StrictMode safety)
+      const channelName = `teacher-messages:${user.id}`;
+      const stale = supabase.getChannels().find(c => c.topic === `realtime:${channelName}`);
+      if (stale) await supabase.removeChannel(stale);
+      if (cancelled) return;
+
+      // 3. Subscribe to INSERT events on teacher_messages for this teacher
+      channelRef = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'teacher_messages',
+          },
+          async (payload) => {
+            const row = payload.new as {
+              id: string;
+              teacher_id: string;
+              student_id: string;
+              is_from_teacher: boolean | null;
+              is_read: boolean | null;
+            };
+
+            // Only process messages sent TO this teacher (from students)
+            if (row.teacher_id !== user.id) return;
+            if (row.is_from_teacher !== false) return; // only student→teacher messages are "new" notifications
+            if (knownIdsRef.current.has(row.id)) return;
+
+            knownIdsRef.current.add(row.id);
+
+            // Fetch full message list to get student name/avatar (single call per event)
+            try {
+              const messages = await getMessages();
+              const newMsg = messages.find(m => m.id === row.id);
+              if (newMsg && !newMsg.isRead) {
+                onNewMessageRef.current?.(newMsg);
+              }
+            } catch {
+              // If server action fails, skip notification — don't crash
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'teacher_messages',
+          },
+          (payload) => {
+            const row = payload.new as { id: string; teacher_id: string; is_read: boolean | null };
+            if (row.teacher_id !== user.id) return;
+            if (row.is_read === true) {
+              onMessageReadRef.current?.(row.id);
+            }
+          }
+        )
+        .subscribe((status) => {
+          setIsConnected(status === 'SUBSCRIBED');
+        });
     };
-    init();
+
+    setup();
+
+    return () => {
+      cancelled = true;
+      if (channelRef) {
+        supabase.removeChannel(channelRef);
+      }
+    };
+  // Run once on mount — callbacks are accessed via refs
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Configurar polling
-  useEffect(() => {
-    const interval = setInterval(fetchMessages, pollingInterval);
-    return () => clearInterval(interval);
-  }, [fetchMessages, pollingInterval]);
-
-  return { 
-    isConnected, 
-    lastMessage, 
-    refreshMessages: fetchMessages 
-  };
+  return { isConnected };
 }

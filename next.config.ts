@@ -5,6 +5,7 @@ const withPWA = require('next-pwa');
 const nextConfig: NextConfig = {
   outputFileTracingRoot: process.cwd(),
   reactStrictMode: true,
+  serverExternalPackages: ['pdf-parse'],
   images: {
     remotePatterns: [
       {

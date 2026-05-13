@@ -1,0 +1,47 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/login)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/verify-email)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/dashboard)",
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(python skills/ui-ux-pro-max/scripts/search.py \"edtech education learning platform ambitious energetic\" --design-system -p \"Ruta Pro-VE\")",
+      "Bash(python3 skills/ui-ux-pro-max/scripts/search.py \"edtech education learning platform ambitious energetic\" --design-system -p \"Ruta Pro-VE\")",
+      "Read(//c/Users/Marcu/.claude/skills/ui-ux-pro-max/**)",
+      "Bash(python \"C:\\\\Users\\\\Marcu\\\\.claude\\\\skills\\\\ui-ux-pro-max\\\\scripts\\\\search.py\" \"edtech education learning platform ambitious energetic landing page\" --design-system -p \"Ruta Pro-VE\")",
+      "Bash(python \"C:\\\\Users\\\\Marcu\\\\.claude\\\\skills\\\\ui-ux-pro-max\\\\scripts\\\\search.py\" \"landing page hero social proof testimonials education\" --domain landing -n 5)",
+      "Bash(npx next *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(node -e ' *)",
+      "Bash(python -c \"import sys,json; p=json.load\\(sys.stdin\\); [print\\(k,v\\) for k,v in {**p.get\\('dependencies',{}\\),**p.get\\('devDependencies',{}\\)}.items\\(\\) if any\\(x in k for x in ['pwa','workbox','tailwind','postcss']\\)]\")",
+      "Bash(python -c \"import sys,json; p=json.load\\(sys.stdin\\); [print\\(k,v\\) for k,v in {**p.get\\('dependencies',{}\\),**p.get\\('devDependencies',{}\\)}.items\\(\\)]\")",
+      "Bash(python -c \"import sys,json; p=json.load\\(sys.stdin\\); print\\(p['scripts']\\)\")",
+      "WebSearch",
+      "Bash(npm list *)",
+      "Bash(node -e \"require\\('react-markdown'\\)\")",
+      "Read(//mnt/c/Users/Marcu/OneDrive/Documents/Ruta pro ve/ruta-pro-ve/app/api/admin/**)",
+      "Bash(git add *)",
+      "Bash(git stash *)",
+      "Bash(git fetch *)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); const keys=Object.keys\\({...p.dependencies,...p.devDependencies}\\); console.log\\(keys.filter\\(k=>k.includes\\('pdf'\\)||k.includes\\('canvas'\\)||k.includes\\('chromium'\\)\\)\\)\")",
+      "Bash(node -e \"const p = require\\('./package.json'\\); console.log\\('framer-motion:', p.dependencies['framer-motion']\\); console.log\\('canvas-confetti:', p.dependencies['canvas-confetti']\\);\")",
+      "Bash(node -e \"require\\('sharp'\\); console.log\\('sharp OK'\\)\")",
+      "Bash(node scripts/trim-mascot.mjs)",
+      "Bash(DATABASE_URL=\"postgresql://postgres.wfwpagaswdyemlqiqnjl:Proyectorutave2026@aws-1-us-east-1.pooler.supabase.com:5432/postgres\" npx prisma db push)",
+      "Bash(node scripts/apply-quiz-migration.mjs)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Marcu\\OneDrive\\Documents\\Ruta pro ve\\ruta-pro-ve\\app\\dashboard\\courses",
+      "c:\\Users\\Marcu\\OneDrive\\Documents\\Ruta pro ve\\ruta-pro-ve\\app\\api\\courses\\[courseId]",
+      "c:\\Users\\Marcu\\OneDrive\\Documents\\Ruta pro ve\\ruta-pro-ve\\app\\api\\admin\\payments",
+      "\\tmp",
+      "c:\\Users\\Marcu\\.claude\\projects\\c--Users-Marcu-OneDrive-Documents-Ruta-pro-ve-ruta-pro-ve\\memory",
+      "c:\\Users\\Marcu\\OneDrive\\Documents\\Ruta pro ve\\ruta-pro-ve\\app\\api\\admin\\badges"
+    ]
+  }
+}

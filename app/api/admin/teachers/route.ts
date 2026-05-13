@@ -51,7 +51,13 @@ export async function GET() {
             specialty: true,
             studentsLimit: true,
             bio: true,
-            hourlyRate: true
+            hourlyRate: true,
+            assignments: {
+              where: { isActive: true },
+              select: {
+                course: { select: { id: true, title: true, isPublished: true, level: { select: { name: true } } } }
+              }
+            }
           }
         }
       },
@@ -65,6 +71,7 @@ export async function GET() {
       studentsLimit: teacher.teacherProfile?.studentsLimit,
       bio: teacher.teacherProfile?.bio,
       hourlyRate: teacher.teacherProfile?.hourlyRate,
+      courses: teacher.teacherProfile?.assignments?.map(a => a.course) ?? [],
       teacherProfile: undefined
     }));
 

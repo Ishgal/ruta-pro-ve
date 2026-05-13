@@ -22,6 +22,7 @@ export default async function StudentsPage() {
       singularLabel="estudiante"
       initialUsers={students}
       apiBase="/api/admin/students"
+      showPlan
     />
   )
 }

@@ -32,7 +32,7 @@ export default async function TeachersPage() {
             where: { isActive: true },
             select: {
               course: {
-                select: { id: true, title: true, isPublished: true }
+                select: { id: true, title: true, isPublished: true, level: { select: { name: true } } }
               }
             }
           }
@@ -55,7 +55,8 @@ export default async function TeachersPage() {
     courses: teacher.teacherProfile?.assignments.map(ass => ({
       id: ass.course.id,
       title: ass.course.title,
-      isPublished: ass.course.isPublished
+      isPublished: ass.course.isPublished,
+      level: ass.course.level ?? null
     })) ?? []
   }))
 

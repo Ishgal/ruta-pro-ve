@@ -1,6 +1,11 @@
 import { PrismaClient } from '../app/generated/prisma';
+import { PrismaPg } from '@prisma/adapter-pg';
+import fs from 'fs';
+import path from 'path';
+import 'dotenv/config';
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log('🌱 Seeding database...');
@@ -50,91 +55,76 @@ async function main() {
   }
   console.log('✅ Badges creados');
 
-  // 3. Cursos y lecciones
+  // 3. Cursos (Asegurar que existan para las lecciones del SQL)
   const coursesData = [
-    {
-      title: 'Introducción a la IA',
-      description: 'Fundamentos de inteligencia artificial.',
-      levelId: 1,
-      isRequired: true,
-      duration: '2h 30m',
-      thumbnailUrl: 'https://picsum.photos/id/1/400/200',
-      skillsTags: ['IA', 'Machine Learning'],
-      isPublished: true,
-      lessons: [
-        { title: '¿Qué es la IA?', videoUrl: 'https://example.com/v1.mp4', content: 'Introducción...', displayOrder: 1, duration: '10m', isFreePreview: true },
-        { title: 'Historia de la IA', videoUrl: 'https://example.com/v2.mp4', content: 'Evolución...', displayOrder: 2, duration: '15m', isFreePreview: false },
-      ],
-    },
-    {
-      title: 'Python para Data Science',
-      description: 'Pandas, NumPy y visualización.',
-      levelId: 2,
-      isRequired: false,
-      duration: '4h',
-      thumbnailUrl: 'https://picsum.photos/id/0/400/200',
-      skillsTags: ['Python', 'Data Science'],
-      isPublished: true,
-      lessons: [
-        { title: 'Introducción a Python', videoUrl: 'https://example.com/py1.mp4', content: 'Sintaxis básica', displayOrder: 1, duration: '20m', isFreePreview: true },
-      ],
-    },
-    {
-      title: 'Redes Neuronales con TensorFlow',
-      description: 'Construye y entrena modelos.',
-      levelId: 3,
-      isRequired: true,
-      duration: '6h',
-      thumbnailUrl: 'https://picsum.photos/id/26/400/200',
-      skillsTags: ['TensorFlow', 'Deep Learning'],
-      isPublished: true,
-      lessons: [],
-    },
+    // Cursos originales del seed.ts
+    { title: 'Introducción a la IA', levelId: 1, isPublished: true, duration: '2h 30m' },
+    { title: 'Python para Data Science', levelId: 2, isPublished: true, duration: '4h' },
+    { title: 'Redes Neuronales con TensorFlow', levelId: 3, isPublished: true, duration: '6h' },
+    // Cursos requeridos por lessons_seed.sql
+    { title: 'Fundamentos de Contabilidad Venezolana', levelId: 1, isPublished: true, duration: '2h' },
+    { title: 'Lógica de Programación', levelId: 1, isPublished: true, duration: '2h' },
+    { title: 'Análisis de Estados Financieros', levelId: 2, isPublished: true, duration: '3h' },
+    { title: 'Desarrollo Web: HTML, CSS y JavaScript', levelId: 2, isPublished: true, duration: '4h' },
+    { title: 'Declaraciones de ISLR e IVA en Venezuela', levelId: 3, isPublished: true, duration: '3h' },
+    { title: 'Control de Versiones con Git y GitHub', levelId: 3, isPublished: true, duration: '2h' },
+    { title: 'Auditoría Financiera', levelId: 4, isPublished: true, duration: '4h' },
+    { title: 'Arquitectura de Software', levelId: 4, isPublished: true, duration: '4h' },
   ];
 
   for (const courseData of coursesData) {
-    // Buscar curso por título
-    let course = await prisma.course.findFirst({ where: { title: courseData.title } });
-    if (!course) {
-      course = await prisma.course.create({
+    const existing = await prisma.course.findFirst({ where: { title: courseData.title } });
+    if (!existing) {
+      await prisma.course.create({
         data: {
           title: courseData.title,
-          description: courseData.description,
           levelId: courseData.levelId,
-          duration: courseData.duration,
-          thumbnailUrl: courseData.thumbnailUrl,
-          skillsTags: courseData.skillsTags,
           isPublished: courseData.isPublished,
-        },
-      });
-    } else {
-      // Actualizar si existe (opcional)
-      course = await prisma.course.update({
-        where: { id: course.id },
-        data: {
-          description: courseData.description,
-          levelId: courseData.levelId,
           duration: courseData.duration,
-          thumbnailUrl: courseData.thumbnailUrl,
-          skillsTags: courseData.skillsTags,
-          isPublished: courseData.isPublished,
+          description: courseData.title, // Placeholder
         },
       });
     }
-
-    // Crear lecciones faltantes
-    for (const lessonData of courseData.lessons) {
-      const existingLesson = await prisma.lesson.findFirst({
-        where: { title: lessonData.title, courseId: course.id },
-      });
-      if (!existingLesson) {
-        await prisma.lesson.create({
-          data: { ...lessonData, courseId: course.id },
-        });
-      }
-    }
-    console.log(`✅ Curso: "${course.title}" procesado con ${courseData.lessons.length} lecciones`);
   }
+  console.log('✅ Cursos base creados');
+
+  // 4. Ejecutar el SQL de lecciones
+  console.log('📖 Cargando lecciones detalladas desde SQL...');
+  try {
+    const sqlPath = path.join(__dirname, 'seeds', 'lessons_seed.sql');
+    const sqlContent = fs.readFileSync(sqlPath, 'utf-8');
+    
+    // Limpiar lecciones previas para evitar duplicados si el SQL usa INSERT
+    // (Solo si estamos seguros de querer repoblar todo)
+    await prisma.$executeRawUnsafe('TRUNCATE TABLE lessons CASCADE');
+    
+    // Ejecutar el SQL completo
+    await prisma.$executeRawUnsafe(sqlContent);
+    console.log('✅ Lecciones cargadas exitosamente desde SQL');
+  } catch (error) {
+    console.warn('⚠️ No se pudo cargar lessons_seed.sql automáticamente:', error);
+    console.log('ℹ️ Puedes cargarlo manualmente en el SQL Editor de Supabase.');
+  }
+
+  // 5. AppSettings (precios y parámetros globales)
+  const settingsData = [
+    { key: 'plan_price_plata',      value: '5.00',  label: 'Precio plan Plata (USD)' },
+    { key: 'plan_price_oro',        value: '10.00', label: 'Precio plan Oro (USD)' },
+    { key: 'plan_discount_pct_plata', value: '50',  label: 'Descuento cupón Plata (%)' },
+    { key: 'plan_discount_pct_oro', value: '30',    label: 'Descuento cupón Oro (%)' },
+    { key: 'plan_coupons_plata',    value: '1',     label: 'Cupones mensuales Plata' },
+    { key: 'plan_coupons_oro',      value: '2',     label: 'Cupones mensuales Oro' },
+    { key: 'certificate_price',     value: '5.00',  label: 'Precio certificado (USD)' },
+    { key: 'course_extra_price',    value: '3.00',  label: 'Precio curso extra (USD)' },
+  ];
+  for (const s of settingsData) {
+    await prisma.appSetting.upsert({
+      where: { key: s.key },
+      update: { label: s.label },
+      create: s,
+    });
+  }
+  console.log('✅ AppSettings creados');
 
   console.log('🎉 Seeding completado');
 }

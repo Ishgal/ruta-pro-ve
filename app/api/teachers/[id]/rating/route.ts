@@ -21,6 +21,15 @@ export async function POST(
       return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 });
     }
 
+    // Verificar plan Oro
+    const student = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { plan: true },
+    });
+    if (student?.plan !== 'oro') {
+      return NextResponse.json({ error: 'Calificar docentes requiere plan Oro' }, { status: 403 });
+    }
+
     // Verificar que el estudiante completó el curso
     const progress = await prisma.userCourseProgress.findFirst({
       where: {

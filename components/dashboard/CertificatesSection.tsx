@@ -60,8 +60,11 @@ function formatBs(amount: number): string {
   return int.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + dec
 }
 
+const PREVIEW_COUNT = 2
+
 export default function CertificatesSection({ certs, certPrice, paymentAccounts, availableCoupons }: Props) {
   const [selected, setSelected] = useState<Cert | null>(null)
+  const [showAllModal, setShowAllModal] = useState(false)
   const [method, setMethod] = useState<PaymentMethod>('pago_movil')
   const [selectedAccountId, setSelectedAccountId] = useState<string>('')
   const [reference, setReference] = useState('')
@@ -72,6 +75,8 @@ export default function CertificatesSection({ certs, certPrice, paymentAccounts,
   const [bcvRate, setBcvRate] = useState<number | null>(null)
   const [bcvDate, setBcvDate] = useState<string | null>(null)
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [downloadSuccess, setDownloadSuccess] = useState(false)
 
   const accountsForMethod = paymentAccounts.filter(a => a.method === method)
   const selectedAccount = accountsForMethod.find(a => a.id === selectedAccountId) ?? accountsForMethod[0]
@@ -94,6 +99,29 @@ export default function CertificatesSection({ certs, certPrice, paymentAccounts,
     }
     return () => { document.body.style.overflow = '' }
   }, [selected])
+
+  async function downloadCert(certId: string, courseTitle: string) {
+    setDownloadingId(certId)
+    try {
+      const res = await fetch(`/api/certificates/${certId}/pdf`)
+      if (!res.ok) throw new Error('Error')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `certificado-${courseTitle.toLowerCase().replace(/\s+/g, '-')}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      setDownloadSuccess(true)
+      setTimeout(() => setDownloadSuccess(false), 3000)
+    } catch {
+      // silencio — el navegador ya muestra error de red si aplica
+    } finally {
+      setDownloadingId(null)
+    }
+  }
 
   function openModal(cert: Cert) {
     const firstMethod = paymentAccounts[0]?.method as PaymentMethod ?? 'pago_movil'
@@ -149,22 +177,44 @@ export default function CertificatesSection({ certs, certPrice, paymentAccounts,
     }
   }
 
+  const preview = localCerts.slice(0, PREVIEW_COUNT)
+
   if (localCerts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 text-gray-300">
-        <svg className="w-10 h-10 mb-2" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-        </svg>
-        <p className="text-sm font-medium text-gray-400">Sin certificados aun</p>
-        <p className="text-xs text-gray-300 mt-1">Completa un curso para obtener el tuyo</p>
+      <div className="flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-gray-900">Certificados</h2>
+        </div>
+        <div className="flex flex-col items-center justify-center py-8 text-gray-300">
+          <svg className="w-10 h-10 mb-2" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+          </svg>
+          <p className="text-sm font-medium text-gray-400">Sin certificados aun</p>
+          <p className="text-xs text-gray-300 mt-1">Completa un curso para obtener el tuyo</p>
+        </div>
       </div>
     )
   }
 
   return (
     <>
-      <div className="flex flex-col gap-3">
-        {localCerts.map(cert => {
+      <div className="flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-gray-900">Certificados</h2>
+          {localCerts.length > PREVIEW_COUNT && (
+            <button
+              onClick={() => setShowAllModal(true)}
+              className="text-sm text-[#00B5B5] font-semibold hover:underline"
+            >
+              Ver todos
+            </button>
+          )}
+        </div>
+
+        {/* Preview: 2 most recent */}
+        <div className="flex flex-col gap-3">
+        {preview.map(cert => {
           const state = certState(cert)
           return (
             <div key={cert.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors">
@@ -200,10 +250,22 @@ export default function CertificatesSection({ certs, certPrice, paymentAccounts,
               </div>
 
               {state === 'unlocked' && (
-                <button className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors" aria-label="Descargar">
-                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
+                <button
+                  onClick={() => downloadCert(cert.id, cert.course.title)}
+                  disabled={downloadingId === cert.id}
+                  aria-label="Descargar certificado"
+                  className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-60 flex items-center justify-center transition-colors"
+                >
+                  {downloadingId === cert.id ? (
+                    <svg className="w-4 h-4 text-gray-400 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  )}
                 </button>
               )}
               {state === 'locked' && (
@@ -214,7 +276,79 @@ export default function CertificatesSection({ certs, certPrice, paymentAccounts,
             </div>
           )
         })}
+        </div>
       </div>
+
+      {/* Ver todos modal */}
+      {showAllModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-900">Todos los certificados</h3>
+              <button
+                onClick={() => setShowAllModal(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-6 py-4 flex flex-col gap-3">
+              {localCerts.map(cert => {
+                const state = certState(cert)
+                return (
+                  <div key={cert.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                      state === 'unlocked' ? 'bg-[#1B4F8C]' :
+                      state === 'pending'  ? 'bg-amber-100'  : 'bg-gray-100'
+                    }`}>
+                      {state === 'unlocked' && <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                      {state === 'pending'  && <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                      {state === 'locked'   && <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{cert.course.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {state === 'unlocked' && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full uppercase tracking-wider">Desbloqueado</span>}
+                        {state === 'pending'  && <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full uppercase tracking-wider">En verificacion</span>}
+                        {state === 'locked'   && <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full uppercase tracking-wider">Bloqueado</span>}
+                      </div>
+                    </div>
+                    {state === 'unlocked' && (
+                      <button
+                        onClick={() => downloadCert(cert.id, cert.course.title)}
+                        disabled={downloadingId === cert.id}
+                        aria-label="Descargar"
+                        className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-60 flex items-center justify-center transition-colors shrink-0"
+                      >
+                        {downloadingId === cert.id ? (
+                          <svg className="w-3.5 h-3.5 text-gray-400 animate-spin" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3.5 h-3.5 text-gray-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                        )}
+                      </button>
+                    )}
+                    {state === 'locked' && (
+                      <button
+                        onClick={() => { setShowAllModal(false); openModal(cert) }}
+                        className="shrink-0 px-3 py-1.5 rounded-lg bg-[#1B4F8C] text-white text-xs font-semibold hover:bg-[#163e6e] transition-colors"
+                      >
+                        Desbloquear
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Payment modal */}
       {selected && (
@@ -399,6 +533,18 @@ export default function CertificatesSection({ certs, certPrice, paymentAccounts,
           </div>
         </div>
       )}
+
+      {/* Toast de descarga exitosa */}
+      <div className={`fixed bottom-6 right-6 z-[200] flex items-center gap-3 bg-gray-900 text-white text-sm font-medium px-4 py-3 rounded-xl shadow-xl transition-all duration-300 ${
+        downloadSuccess ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'
+      }`}>
+        <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center shrink-0">
+          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        </div>
+        Certificado descargado
+      </div>
     </>
   )
 }

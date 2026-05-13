@@ -116,13 +116,14 @@ export async function GET() {
         });
       });
       const totalCourses = teacher.teacherProfile?.assignments.length || 0;
-      const rating = (4.5 + Math.random() * 0.5).toFixed(1);
+      const rating = teacher.teacherProfile?.rating ?? 0;
+      const specialty = teacher.teacherProfile?.specialty?.[0] || 'General';
       return {
         name: teacher.name || teacher.email,
-        specialty: teacher.teacherProfile?.assignments[0]?.course.title?.split(' ')[0] || 'Educador',
+        specialty,
         students: uniqueStudents.size,
         coursesCount: totalCourses,
-        rating: parseFloat(rating)
+        rating
       };
     });
 

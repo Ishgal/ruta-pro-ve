@@ -97,9 +97,11 @@ export async function PATCH(
     },
   })
 
-  checkAndAwardBadges(user.id, { currentStreakDays: streak }).catch(
-    err => console.error('[badges]', err)
-  )
+  const newBadges = await checkAndAwardBadges(user.id, {
+    currentStreakDays: streak,
+    totalXp: newXp,
+    totalLessonsCompleted: await prisma.userLessonProgress.count({ where: { userId: user.id } }),
+  }).catch(err => { console.error('[badges]', err); return [] })
 
-  return NextResponse.json({ progressPercent, allLessonsComplete, completedLessons, totalLessons })
+  return NextResponse.json({ progressPercent, allLessonsComplete, completedLessons, totalLessons, newBadges })
 }

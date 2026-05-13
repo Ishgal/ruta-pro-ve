@@ -228,10 +228,20 @@ export async function PATCH(
     await checkAndAdvanceLevel(user.id)
   }
 
-  // Check badges for exam_score always; courses/route only if passed (stats updated)
+  // Fetch updated stats (awardCourseXP already ran above) for badge evaluation
+  const freshStats = passed
+    ? await prisma.userStats.findUnique({
+        where: { userId: user.id },
+        select: { totalCoursesCompleted: true, totalXp: true, currentStreakDays: true },
+      })
+    : null
+
   const newBadges = await checkAndAwardBadges(user.id, {
-    lastExamScore: scorePercent,
-    checkRouteComplete: passed,
+    ...(freshStats ? {
+      totalCoursesCompleted: freshStats.totalCoursesCompleted ?? 0,
+      totalXp: freshStats.totalXp ?? 0,
+      currentStreakDays: freshStats.currentStreakDays ?? 0,
+    } : {}),
   }).catch(err => { console.error('[badges]', err); return [] })
 
   return NextResponse.json({

@@ -12,6 +12,13 @@ interface Props {
   apiBase: string
   canInvite?: boolean
   canToggleActive?: boolean
+  showPlan?: boolean
+}
+
+const PLAN_STYLES: Record<string, { label: string; cls: string }> = {
+  bronce: { label: 'Bronce', cls: 'bg-orange-50 text-orange-500' },
+  plata:  { label: 'Plata',  cls: 'bg-slate-100 text-slate-500' },
+  oro:    { label: 'Oro',    cls: 'bg-amber-100 text-amber-600' },
 }
 
 export default function UsersTableClient({
@@ -21,6 +28,7 @@ export default function UsersTableClient({
   apiBase,
   canInvite = false,
   canToggleActive = false,
+  showPlan = false,
 }: Props) {
   const [users, setUsers] = useState<User[]>(initialUsers)
   const [page, setPage] = useState(0)
@@ -179,6 +187,7 @@ export default function UsersTableClient({
               <tr className="border-b border-gray-100 bg-gray-50/50">
                 <th className="text-left px-5 py-3.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">Nombre</th>
                 <th className="text-left px-5 py-3.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">Email</th>
+                {showPlan && <th className="text-left px-5 py-3.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">Plan</th>}
                 <th className="text-left px-5 py-3.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">Estado</th>
                 <th className="text-left px-5 py-3.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">Creado</th>
                 <th className="px-5 py-3.5" />
@@ -195,6 +204,17 @@ export default function UsersTableClient({
                   <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-5 py-4 font-medium text-gray-900">{user.name}</td>
                     <td className="px-5 py-4 text-gray-500">{user.email}</td>
+                    {showPlan && (
+                      <td className="px-5 py-4">
+                        {user.plan ? (
+                          <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${PLAN_STYLES[user.plan]?.cls ?? 'bg-gray-100 text-gray-500'}`}>
+                            {PLAN_STYLES[user.plan]?.label ?? user.plan}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-300">—</span>
+                        )}
+                      </td>
+                    )}
                     <td className="px-5 py-4">
                       {isPending ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 text-xs font-medium">

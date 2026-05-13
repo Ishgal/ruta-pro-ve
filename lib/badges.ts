@@ -4,14 +4,14 @@ type BadgeContext = {
   totalLessonsCompleted?: number
   totalCoursesCompleted?: number
   currentStreakDays?: number
-  lastExamScore?: number
-  checkRouteComplete?: boolean
+  totalXp?: number
+  lastCompletedLevelId?: number
 }
 
 export async function checkAndAwardBadges(
   userId: string,
   context: BadgeContext = {}
-): Promise<{ name: string; icon: string }[]> {
+): Promise<{ name: string; icon: string; description: string }[]> {
   const [allBadges, earned] = await Promise.all([
     prisma.badge.findMany(),
     prisma.userBadge.findMany({ where: { userId }, select: { badgeId: true } }),
@@ -21,59 +21,63 @@ export async function checkAndAwardBadges(
   const unearned = allBadges.filter(b => !earnedSet.has(b.id))
   if (unearned.length === 0) return []
 
-  const needsStats = context.totalCoursesCompleted === undefined || context.currentStreakDays === undefined
+  // Fetch stats if any context values are missing
+  const needsStats = (
+    context.totalCoursesCompleted === undefined ||
+    context.currentStreakDays === undefined ||
+    context.totalXp === undefined
+  )
   const needsLessons = context.totalLessonsCompleted === undefined
+  const needsLevels = unearned.some(b => b.conditionType === 'LEVEL_COMPLETION')
 
-  const [stats, lessonCount] = await Promise.all([
+  const [stats, lessonCount, completedLevels] = await Promise.all([
     needsStats
-      ? prisma.userStats.findUnique({ where: { userId }, select: { totalCoursesCompleted: true, currentStreakDays: true } })
+      ? prisma.userStats.findUnique({
+          where: { userId },
+          select: { totalCoursesCompleted: true, currentStreakDays: true, totalXp: true },
+        })
       : Promise.resolve(null),
     needsLessons
       ? prisma.userLessonProgress.count({ where: { userId } })
       : Promise.resolve(null),
+    needsLevels
+      ? prisma.levelCompletion.findMany({
+          where: { userId, isCompleted: true },
+          select: { levelId: true },
+        })
+      : Promise.resolve(null),
   ])
 
   const totalCoursesCompleted = context.totalCoursesCompleted ?? stats?.totalCoursesCompleted ?? 0
-  const currentStreakDays = context.currentStreakDays ?? stats?.currentStreakDays ?? 0
+  const currentStreakDays    = context.currentStreakDays    ?? stats?.currentStreakDays    ?? 0
+  const totalXp              = context.totalXp              ?? stats?.totalXp              ?? 0
   const totalLessonsCompleted = context.totalLessonsCompleted ?? lessonCount ?? 0
-
-  let isRouteComplete = false
-  if (context.checkRouteComplete) {
-    const profile = await prisma.studentProfile.findUnique({
-      where: { userId },
-      select: { generatedRoute: true },
-    })
-    const routeData = profile?.generatedRoute as { route: { courseId: string }[] } | null
-    const routeIds = routeData?.route?.map(r => r.courseId) ?? []
-    if (routeIds.length > 0) {
-      const completedCount = await prisma.userCourseProgress.count({
-        where: { userId, courseId: { in: routeIds }, status: 'completed' },
-      })
-      isRouteComplete = completedCount === routeIds.length
-    }
-  }
+  const completedLevelIds    = new Set((completedLevels ?? []).map(l => l.levelId))
 
   const toAward: typeof unearned = []
+
   for (const badge of unearned) {
     const val = badge.conditionValue ?? 0
     let met = false
+
     switch (badge.conditionType) {
-      case 'first_lesson':
-        met = totalLessonsCompleted >= val
-        break
-      case 'courses_completed':
+      case 'COURSE_COMPLETION':
         met = totalCoursesCompleted >= val
         break
-      case 'streak_days':
+      case 'LESSON_COMPLETION':
+        met = totalLessonsCompleted >= val
+        break
+      case 'STREAK_DAYS':
         met = currentStreakDays >= val
         break
-      case 'exam_score':
-        met = context.lastExamScore !== undefined && context.lastExamScore >= val
+      case 'XP_TOTAL':
+        met = totalXp >= val
         break
-      case 'route_completed':
-        met = isRouteComplete
+      case 'LEVEL_COMPLETION':
+        met = completedLevelIds.has(val)
         break
     }
+
     if (met) toAward.push(badge)
   }
 
@@ -84,5 +88,9 @@ export async function checkAndAwardBadges(
     })
   }
 
-  return toAward.map(b => ({ name: b.name, icon: b.iconUrl ?? '' }))
+  return toAward.map(b => ({
+    name: b.name,
+    icon: b.iconUrl ?? '🏅',
+    description: b.description ?? '',
+  }))
 }

@@ -6,6 +6,7 @@ import { checkAndAdvanceLevel } from '@/lib/level'
 import { logoutAction } from '@/app/actions/logout.actions'
 import DashboardHeader from '@/components/dashboard/DashboardHeader'
 import CertificatesSection from '@/components/dashboard/CertificatesSection'
+import BadgesSection from '@/components/dashboard/BadgesSection'
 
 export const metadata = { title: 'Perfil | Ruta Pro-VE' }
 
@@ -95,16 +96,15 @@ export default async function ProfilePage() {
         select: { currentStreakDays: true, totalCoursesCompleted: true, totalXp: true, lastActivityDate: true },
       },
       badges: {
-        include: { badge: { select: { name: true, iconUrl: true } } },
-        take: 4,
+        include: { badge: { select: { name: true, iconUrl: true, description: true } } },
+        orderBy: { awardedAt: 'desc' as const },
       },
       certificates: {
         include: {
           course: { select: { title: true } },
           payments: { where: { status: 'pending' }, select: { id: true, status: true } },
         },
-        orderBy: { issuedAt: 'desc' },
-        take: 5,
+        orderBy: { issuedAt: 'desc' as const },
       },
       studentProfile: {
         select: {
@@ -189,9 +189,8 @@ export default async function ProfilePage() {
     await checkAndAwardBadges(authUser.id, { checkRouteComplete: true })
     badgeList = await prisma.userBadge.findMany({
       where: { userId: authUser.id },
-      include: { badge: { select: { name: true, iconUrl: true } } },
+      include: { badge: { select: { name: true, iconUrl: true, description: true } } },
       orderBy: { awardedAt: 'desc' },
-      take: 4,
     })
   }
 
@@ -223,7 +222,7 @@ export default async function ProfilePage() {
     <div className="min-h-screen">
       <DashboardHeader />
 
-      <div className="px-4 md:px-6 pb-8 space-y-4">
+      <div className="px-4 md:px-6 pb-32 md:pb-8 space-y-4">
 
         {/* ── Profile card ── */}
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
@@ -237,10 +236,23 @@ export default async function ProfilePage() {
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-xs font-bold tracking-widest text-[#00B5B5] uppercase mb-1 block">
-                Estudiante — {levelName}
-              </span>
-              <h1 className="text-2xl font-black text-gray-900 mb-2">{dbUser.name}</h1>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-bold tracking-widest text-[#00B5B5] uppercase">
+                  Estudiante — {levelName}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mb-2">
+                <h1 className="text-2xl font-black text-gray-900">{dbUser.name}</h1>
+                {dbUser.plan === 'bronce' && (
+                  <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-orange-50 text-orange-500 border border-orange-200">Bronce</span>
+                )}
+                {dbUser.plan === 'plata' && (
+                  <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Plata</span>
+                )}
+                {dbUser.plan === 'oro' && (
+                  <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-100 text-amber-600">Oro</span>
+                )}
+              </div>
               <div className="flex flex-wrap gap-4 text-sm text-gray-500">
                 {profile?.location && (
                   <span className="flex items-center gap-1">
@@ -280,20 +292,24 @@ export default async function ProfilePage() {
 
           {/* Mobile */}
           <div className="md:hidden flex flex-col items-center py-8 px-6 gap-3">
-            <div className="relative">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-600 to-slate-900 flex items-center justify-center">
-                <svg className="w-10 h-10 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                </svg>
-              </div>
-              {isPremium && (
-                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-[#00B5B5] text-white text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wider">
-                  PREMIUM
-                </span>
-              )}
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-600 to-slate-900 flex items-center justify-center">
+              <svg className="w-10 h-10 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+              </svg>
             </div>
             <div className="text-center">
-              <h1 className="text-xl font-black text-gray-900">{dbUser.name}</h1>
+              <div className="flex items-center justify-center gap-2">
+                <h1 className="text-xl font-black text-gray-900">{dbUser.name}</h1>
+                {dbUser.plan === 'bronce' && (
+                  <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-orange-50 text-orange-500 border border-orange-200">Bronce</span>
+                )}
+                {dbUser.plan === 'plata' && (
+                  <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Plata</span>
+                )}
+                {dbUser.plan === 'oro' && (
+                  <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-100 text-amber-600">Oro</span>
+                )}
+              </div>
               <p className="text-sm text-gray-400 mt-0.5">{dbUser.email}</p>
             </div>
             <div className="flex gap-px overflow-hidden rounded-xl border border-gray-100 w-full mt-1">
@@ -412,38 +428,10 @@ export default async function ProfilePage() {
         {/* ── Badges & Certificates ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Badges */}
-          <div className="bg-white rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-gray-900">Insignias Logradas</h2>
-              <button className="text-sm text-[#00B5B5] font-semibold hover:underline">Ver todos</button>
-            </div>
-            {badgeList.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-gray-300">
-                <svg className="w-10 h-10 mb-2" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
-                </svg>
-                <p className="text-sm font-medium text-gray-400">Aún sin insignias</p>
-                <p className="text-xs text-gray-300 mt-1">Completa cursos para ganarlas</p>
-              </div>
-            ) : (
-              <div className="flex gap-5 flex-wrap">
-                {badgeList.map((ub) => (
-                  <div key={ub.id} className="flex flex-col items-center gap-2">
-                    <div className="w-14 h-14 rounded-full bg-[#E6F8F8] flex items-center justify-center">
-                      <span className="text-3xl">{ub.badge.iconUrl ?? '🏅'}</span>
-                    </div>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-600 text-center max-w-[70px]">{ub.badge.name}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <BadgesSection badges={badgeList} />
 
           {/* Certificates */}
           <div className="bg-white rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-gray-900">Certificados</h2>
-            </div>
             <CertificatesSection
               certs={dbUser.certificates}
               certPrice={certPrice}

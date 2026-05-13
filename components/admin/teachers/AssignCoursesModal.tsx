@@ -90,7 +90,7 @@ export default function AssignCoursesModal({ teacherId, teacherName, onClose, on
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
-      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div>
@@ -135,7 +135,7 @@ export default function AssignCoursesModal({ teacherId, teacherName, onClose, on
                         <div className="flex-1">
                           <p className="font-medium text-gray-800">{course.title}</p>
                           <p className="text-xs text-gray-400">
-                            Nivel: {course.level?.name || 'Sin nivel'}
+                            {course.level?.name || 'Sin nivel'}
                           </p>
                         </div>
                         <button
@@ -163,11 +163,11 @@ export default function AssignCoursesModal({ teacherId, teacherName, onClose, on
                     No hay cursos disponibles para asignar
                   </p>
                 ) : (
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 min-w-0">
                     <select
                       value={selectedCourseId}
                       onChange={(e) => setSelectedCourseId(e.target.value)}
-                      className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
+                      className="flex-1 min-w-0 px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
                     >
                       <option value="">Seleccionar curso...</option>
                       {unassignedCourses.map(course => (

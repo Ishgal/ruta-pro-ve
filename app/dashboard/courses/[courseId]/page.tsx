@@ -19,7 +19,7 @@ export default async function CoursePlayerPage({
 
   const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { plan: true } })
 
-  const [course, lessonProgressList, passedAttempt] = await Promise.all([
+  const [course, lessonProgressList, quizResultsList, passedAttempt, teacherAssignment] = await Promise.all([
     prisma.course.findUnique({
       where: { id: courseId },
       include: {
@@ -30,15 +30,34 @@ export default async function CoursePlayerPage({
       where: { userId: user.id, lesson: { courseId } },
       select: { lessonId: true },
     }),
+    prisma.userQuizResult.findMany({
+      where: { userId: user.id, lesson: { courseId } },
+      select: { lessonId: true, answers: true },
+    }),
     prisma.examAttempt.findFirst({
       where: { courseId, userId: user.id, passed: true },
       select: { id: true },
     }),
+    prisma.teacherAssignment.findFirst({
+      where: { courseId, isActive: true },
+      select: { teacherId: true },
+    }),
   ])
+
+  const teacherId = teacherAssignment?.teacherId ?? null
+  const existingRating = teacherId
+    ? await prisma.teacherReview.findFirst({
+        where: { teacherId, studentId: user.id, courseId },
+        select: { rating: true },
+      })
+    : null
 
   if (!course) redirect('/dashboard/courses')
 
   const completedSet = new Set(lessonProgressList.map(lp => lp.lessonId))
+  const quizResultsMap = Object.fromEntries(
+    quizResultsList.map(r => [r.lessonId, r.answers as Record<string, number>])
+  )
 
   const lessons: PlayerLesson[] = course.lessons.map(lesson => ({
     id: lesson.id,
@@ -69,6 +88,9 @@ export default async function CoursePlayerPage({
       totalLessons={course.lessons.length}
       initialExamPassed={!!passedAttempt}
       userPlan={dbUser?.plan ?? 'bronce'}
+      teacherId={teacherId}
+      hasExistingRating={!!existingRating}
+      quizResults={quizResultsMap}
     />
   )
 }

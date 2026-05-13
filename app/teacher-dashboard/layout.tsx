@@ -38,7 +38,8 @@ export default async function TeacherDashboardLayout({
   });
 
   if (!dbUser || dbUser.role !== 'docente') {
-    redirect('/dashboard');
+    if (dbUser?.role === 'admin') redirect('/admin')
+    redirect('/dashboard')
   }
 
   const handleSignOut = async () => {
