@@ -49,7 +49,7 @@ export default async function PlansPage() {
   return (
     <div className="min-h-screen bg-[#F4F6F9]">
       <DashboardHeader />
-      <div className="px-4 md:px-8 py-8">
+      <div className="px-4 md:px-8 pt-8 pb-32 md:pb-10">
         <div className="text-center mb-10">
           <h1 className="text-3xl font-black text-gray-900">Elige tu plan</h1>
           <p className="text-gray-500 mt-2 text-sm">Accede a beneficios exclusivos y acelera tu formacion profesional</p>

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { getMessages } from '@/app/teacher-dashboard/actions';
+import { getAllRecentMessages } from '@/app/teacher-dashboard/actions';
 
 export interface RealtimeMessage {
   id: string;
@@ -43,7 +43,7 @@ export function useRealtimeMessages({
       if (!user || cancelled) return;
 
       // 1. Seed knownIds from current messages so existing messages don't trigger onNewMessage
-      const initial = await getMessages();
+      const initial = await getAllRecentMessages();
       if (cancelled) return;
       knownIdsRef.current = new Set(initial.map(m => m.id));
 
@@ -81,7 +81,7 @@ export function useRealtimeMessages({
 
             // Fetch full message list to get student name/avatar (single call per event)
             try {
-              const messages = await getMessages();
+              const messages = await getAllRecentMessages();
               const newMsg = messages.find(m => m.id === row.id);
               if (newMsg && !newMsg.isRead) {
                 onNewMessageRef.current?.(newMsg);

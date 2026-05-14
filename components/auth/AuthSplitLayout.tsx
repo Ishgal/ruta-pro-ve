@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface AuthSplitLayoutProps {
   children: React.ReactNode
@@ -77,14 +78,16 @@ export default function AuthSplitLayout({ children, mode }: AuthSplitLayoutProps
               </div>
             </div>
 
-            {/* Placeholder personaje */}
-            <div className="mt-8 rounded-2xl bg-[#163F73] overflow-hidden h-48 flex items-center justify-center">
-              <div className="text-center text-blue-200/60 text-xs px-4">
-                <svg className="w-16 h-16 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <p>Imagen del personaje</p>
-              </div>
+            {/* Ruty saludando */}
+            <div className="mt-8 rounded-2xl bg-[#163F73] overflow-hidden h-48 flex items-end justify-center">
+              <Image
+                src="/mascot/ruty-saludando.png"
+                alt="Ruty saludando"
+                width={180}
+                height={180}
+                className="object-contain object-bottom h-full w-auto"
+                priority
+              />
             </div>
           </div>
 

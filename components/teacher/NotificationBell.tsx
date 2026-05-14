@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Bell, MessageSquare } from 'lucide-react';
 import { useRealtimeMessages, type RealtimeMessage } from '@/hooks/useRealtimeMessages';
-import { getMessages } from '@/app/teacher-dashboard/actions';
+import { getAllRecentMessages } from '@/app/teacher-dashboard/actions';
 
 interface Notification {
   id: string;
@@ -20,7 +20,7 @@ export default function NotificationBell() {
 
   const refreshCount = useCallback(async () => {
     try {
-      const messages = await getMessages();
+      const messages = await getAllRecentMessages();
       const unread = messages.filter(m => !m.isRead);
       setUnreadCount(unread.length);
       setNotifications(

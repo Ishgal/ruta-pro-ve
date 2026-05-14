@@ -3,15 +3,16 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
-import { 
-  LayoutDashboard, 
-  MessageSquare, 
-  BookOpen, 
+import {
+  LayoutDashboard,
+  MessageSquare,
+  BookOpen,
   LogOut,
   User,
   Settings
 } from 'lucide-react';
-import NotificationBell from '@/components/teacher/NotificationBell';  // Ruta corregida
+import NotificationBell from '@/components/teacher/NotificationBell';
+import PageTransition from '@/components/ui/PageTransition';
 
 export default async function TeacherDashboardLayout({ 
   children 
@@ -157,9 +158,9 @@ export default async function TeacherDashboardLayout({
       </header>
 
       {/* Contenido principal */}
-      <main className="lg:pl-72">
+      <main className="lg:pl-72 overflow-x-hidden">
         <div className="container mx-auto px-4 py-8 pb-24 lg:pb-8">
-          {children}
+          <PageTransition>{children}</PageTransition>
         </div>
       </main>
 

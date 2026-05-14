@@ -29,7 +29,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="flex h-screen overflow-hidden bg-[#F4F6F9]">
       <Sidebar isOro={isOro} plan={dbUser.plan ?? 'bronce'} />
-      <main className="flex-1 overflow-y-auto pb-24 md:pb-0">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden pb-24 md:pb-0">
         <PageTransition>{children}</PageTransition>
       </main>
       <BottomNav isOro={isOro} />

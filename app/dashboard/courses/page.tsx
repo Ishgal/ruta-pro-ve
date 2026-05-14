@@ -48,7 +48,7 @@ export default async function CoursesPage() {
     orderedCourses.every(c => progressMap.get(c.id)?.status === 'completed')
 
   return (
-    <div className="min-h-screen bg-[#F4F6F9] px-4 py-6 md:px-8">
+    <div className="min-h-screen bg-[#F4F6F9] px-4 pt-6 pb-32 md:px-8 md:pb-10">
       <h1 className="text-xl font-bold text-gray-900 mb-0.5">Mis cursos</h1>
       <p className="text-sm text-gray-500 mb-6">Tu ruta de aprendizaje personalizada por Ruty</p>
 
