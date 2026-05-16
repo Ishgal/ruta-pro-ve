@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '**.amazonaws.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'wfwpagaswdyemlqiqnjl.supabase.co',
+      },
     ],
   },
   typescript: {
@@ -24,4 +28,6 @@ export default withPWA({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
+  // IMPORTANTE: Esto evita conflictos en Vercel
+  buildExcludes: [/middleware-manifest\.json$/],
 })(nextConfig);

@@ -2,10 +2,12 @@
   "name": "ruta-pro-ve",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
+   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build --webpack",
-    "start": "next start"
+    "build": "prisma generate && next build --webpack",
+    "start": "next start",
+    "postinstall": "prisma generate",
+    "lint": "next lint"
   },
   "dependencies": {
     "@google/genai": "^1.50.1",
