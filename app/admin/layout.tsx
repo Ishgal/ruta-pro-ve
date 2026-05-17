@@ -10,7 +10,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { role: true },
+    select: { role: true, name: true },
   })
 
   if (!dbUser || dbUser.role !== 'admin') {
@@ -20,7 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <AdminSidebar />
+      <AdminSidebar name={dbUser.name ?? ''} />
       <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
     </div>
   )

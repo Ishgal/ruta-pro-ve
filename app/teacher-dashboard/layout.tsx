@@ -53,7 +53,7 @@ export default async function TeacherDashboardLayout({
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100">
       {/* Sidebar para desktop */}
-      <aside className="fixed inset-y-0 left-0 z-50 hidden w-72 bg-white shadow-xl lg:block">
+      <aside className="fixed inset-y-0 left-0 z-50 hidden w-60 bg-white shadow-xl lg:block">
         <div className="flex h-full flex-col">
           {/* Logo y nombre */}
           <div className="flex h-20 items-center justify-between px-6 border-b border-gray-200">
@@ -158,7 +158,7 @@ export default async function TeacherDashboardLayout({
       </header>
 
       {/* Contenido principal */}
-      <main className="lg:pl-72 overflow-x-hidden">
+      <main className="lg:pl-60 overflow-x-hidden">
         <div className="container mx-auto px-4 py-8 pb-24 lg:pb-8">
           <PageTransition>{children}</PageTransition>
         </div>

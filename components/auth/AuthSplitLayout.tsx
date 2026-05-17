@@ -3,7 +3,7 @@ import Image from 'next/image'
 
 interface AuthSplitLayoutProps {
   children: React.ReactNode
-  mode: 'register' | 'login'
+  mode: 'register' | 'login' | 'forgot-password'
 }
 
 export default function AuthSplitLayout({ children, mode }: AuthSplitLayoutProps) {
@@ -18,6 +18,16 @@ export default function AuthSplitLayout({ children, mode }: AuthSplitLayoutProps
           {mode === 'register' ? (
             <>
               <span>¿Ya tienes cuenta?</span>
+              <Link
+                href="/login"
+                className="border border-[#1B4F8C] text-[#1B4F8C] rounded-full px-5 py-1.5 font-medium hover:bg-[#1B4F8C] hover:text-white transition-colors duration-200"
+              >
+                Iniciar Sesión
+              </Link>
+            </>
+          ) : mode === 'forgot-password' ? (
+            <>
+              <span>¿Recordaste tu contraseña?</span>
               <Link
                 href="/login"
                 className="border border-[#1B4F8C] text-[#1B4F8C] rounded-full px-5 py-1.5 font-medium hover:bg-[#1B4F8C] hover:text-white transition-colors duration-200"
@@ -78,14 +88,14 @@ export default function AuthSplitLayout({ children, mode }: AuthSplitLayoutProps
               </div>
             </div>
 
-            {/* Ruty saludando */}
-            <div className="mt-8 rounded-2xl bg-[#163F73] overflow-hidden h-48 flex items-end justify-center">
+            {/* Ruty */}
+            <div className="mt-8 rounded-2xl bg-[#163F73] overflow-hidden h-48 relative">
               <Image
-                src="/mascot/ruty-saludando.png"
-                alt="Ruty saludando"
-                width={180}
-                height={180}
-                className="object-contain object-bottom h-full w-auto"
+                src={mode === 'forgot-password' ? '/mascot/ruty-pensando.png' : '/mascot/ruty-saludando.png'}
+                alt={mode === 'forgot-password' ? 'Ruty pensando' : 'Ruty saludando'}
+                fill
+                sizes="(max-width: 768px) 0px, 280px"
+                className="object-contain object-bottom"
                 priority
               />
             </div>

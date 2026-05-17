@@ -21,8 +21,18 @@ export interface OAuthResult {
   error: string | null
 }
 
+export interface ForgotPasswordDTO {
+  email: string
+  redirectTo: string
+}
+
+export interface ForgotPasswordResult {
+  error: string | null
+}
+
 export interface IAuthRepository {
   register(data: RegisterDTO): Promise<AuthResult>
   login(data: LoginDTO): Promise<AuthResult>
   signInWithLinkedIn(redirectTo: string): Promise<OAuthResult>
+  requestPasswordReset(data: ForgotPasswordDTO): Promise<ForgotPasswordResult>
 }

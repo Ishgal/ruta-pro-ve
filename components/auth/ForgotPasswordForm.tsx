@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { forgotPasswordAction } from '@/app/actions/forgot-password.actions'
 
@@ -13,6 +14,8 @@ const initialState: ActionState = {}
 
 export default function ForgotPasswordForm() {
   const [state, action, isPending] = useActionState(forgotPasswordAction, initialState)
+  const searchParams = useSearchParams()
+  const urlError = searchParams.get('error')
 
   if (state.success) {
     return (
@@ -43,9 +46,9 @@ export default function ForgotPasswordForm() {
         Ingresa tu correo y te enviaremos un enlace para restablecerla.
       </p>
 
-      {state.error && (
+      {(state.error || urlError) && (
         <div className="animate-slide-down mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
-          {state.error}
+          {state.error || urlError}
         </div>
       )}
 

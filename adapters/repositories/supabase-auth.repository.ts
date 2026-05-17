@@ -5,6 +5,8 @@ import {
   LoginDTO,
   AuthResult,
   OAuthResult,
+  ForgotPasswordDTO,
+  ForgotPasswordResult,
 } from '@/application/ports/auth.repository.port'
 import { User } from '@/domain/entities/user.entity'
 
@@ -62,5 +64,17 @@ export class SupabaseAuthRepository implements IAuthRepository {
 
     if (error) return { url: null, error: error.message }
     return { url: data.url, error: null }
+  }
+
+  async requestPasswordReset(data: ForgotPasswordDTO): Promise<ForgotPasswordResult> {
+    const { error } = await this.supabase.auth.resetPasswordForEmail(data.email, {
+      redirectTo: data.redirectTo,
+    })
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    return { error: null }
   }
 }

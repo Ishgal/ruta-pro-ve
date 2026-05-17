@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import Link from 'next/link'
 import { resetPasswordAction } from '@/app/actions/reset-password.actions'
 
 interface ActionState {
@@ -14,6 +15,28 @@ export default function ResetPasswordForm() {
   const [state, action, isPending] = useActionState(resetPasswordAction, initialState)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+
+  if (state.success) {
+    return (
+      <div className="text-center">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">¡Contraseña actualizada!</h2>
+        <p className="text-gray-500 text-sm mb-6">
+          Tu contraseña fue cambiada exitosamente. Ya puedes iniciar sesión con tu nueva contraseña.
+        </p>
+        <Link
+          href="/login"
+          className="inline-block w-full py-3.5 rounded-xl bg-[#1A3C6E] text-white font-semibold text-sm text-center hover:bg-[#1B4F8C] transition-all duration-200 shadow-md"
+        >
+          Iniciar sesión
+        </Link>
+      </div>
+    )
+  }
 
   return (
     <div>

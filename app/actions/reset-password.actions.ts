@@ -1,8 +1,6 @@
 'use server'
 
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { prisma } from '@/lib/prisma'
 
 interface ActionState {
   error?: string
@@ -36,15 +34,7 @@ export async function resetPasswordAction(
     return { error: 'No se pudo actualizar la contraseña. El enlace puede haber expirado.' }
   }
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  await supabase.auth.signOut()
 
-  const dbUser = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { role: true },
-  })
-
-  if (dbUser?.role === 'admin') redirect('/admin')
-  if (dbUser?.role === 'docente') redirect('/teacher-dashboard')
-  redirect('/dashboard')
+  return { success: true }
 }

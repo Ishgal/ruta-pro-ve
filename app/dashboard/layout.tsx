@@ -12,7 +12,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { role: true, plan: true, studentProfile: { select: { completedAt: true } } },
+    select: { role: true, plan: true, name: true, studentProfile: { select: { completedAt: true } } },
   })
 
   if (!dbUser) redirect('/login')
@@ -28,7 +28,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F4F6F9]">
-      <Sidebar isOro={isOro} plan={dbUser.plan ?? 'bronce'} />
+      <Sidebar isOro={isOro} plan={dbUser.plan ?? 'bronce'} name={dbUser.name ?? ''} />
       <main className="flex-1 overflow-y-auto overflow-x-hidden pb-24 md:pb-0">
         <PageTransition>{children}</PageTransition>
       </main>
