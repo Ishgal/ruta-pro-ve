@@ -6,12 +6,13 @@ const MAX_CV_TEXT = 8000
 
 async function extractPdfText(buffer: Buffer): Promise<string> {
   try {
-    // Import from lib directly to avoid pdf-parse's test-runner bootstrap
+    // Usar require en lugar de import para evitar problemas de tipos
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require('pdf-parse/lib/pdf-parse') as (buf: Buffer) => Promise<{ text: string }>
+    const pdfParse = require('pdf-parse')
     const result = await pdfParse(buffer)
     return (result.text ?? '').slice(0, MAX_CV_TEXT).trim()
-  } catch {
+  } catch (error) {
+    console.error('Error extracting PDF text:', error)
     return ''
   }
 }
