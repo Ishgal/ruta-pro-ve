@@ -9,8 +9,6 @@ export default defineConfig({
     path: "prisma/migrations",seed: 'ts-node --compiler-options {"module":"CommonJS"} prisma/seed.ts',
   },
   datasource: {
-    // Session pooler (puerto 5432) o transaction pooler (6543) — usamos DATABASE_URL
-    // porque el puerto 5432 puede estar bloqueado en redes locales.
-    url: process.env["DATABASE_URL"],
+    url: process.env["DIRECT_URL"],
   },
 });

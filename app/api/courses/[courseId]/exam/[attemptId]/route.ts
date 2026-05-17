@@ -217,14 +217,16 @@ export async function PATCH(
         update: { status: 'completed', progressPercent: 100, completedAt: new Date() },
       }),
       awardCourseXP(user.id),
-      // Create locked certificate — pdfUrl stays null until paid
       prisma.certificate.upsert({
         where: { userId_courseId: { userId: user.id, courseId } },
         create: { userId: user.id, courseId, qrCode: randomUUID() },
         update: {},
       }),
+      prisma.mentorAssignment.updateMany({
+        where: { studentId: user.id, courseId, status: 'active' },
+        data: { status: 'completed', completedAt: new Date() },
+      }),
     ])
-    // Must run after course is marked completed (depends on UserCourseProgress state)
     await checkAndAdvanceLevel(user.id)
   }
 

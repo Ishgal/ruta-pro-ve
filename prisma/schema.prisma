@@ -39,6 +39,8 @@ model User {
   quizResults                                         UserQuizResult[]
   skills                                              UserSkill[]
   userStats                                           UserStats?
+  mentorAssignmentsAsStudent                          MentorAssignment[]     @relation("MentorAssignment_student")
+  mentorAssignmentsAsTeacher                          MentorAssignment[]     @relation("MentorAssignment_teacher")
 
   @@map("users")
 }
@@ -93,6 +95,7 @@ model Course {
   teacherReviews            TeacherReview[]
   userProgress              UserCourseProgress[]
   extraCourseEnrollments    ExtraCourseEnrollment[]
+  mentorAssignments         MentorAssignment[]
 
   @@index([levelId], map: "idx_courses_level_id")
   @@map("courses")
@@ -409,6 +412,7 @@ model teacher_messages {
   id                                       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   teacher_id                               String    @db.Uuid
   student_id                               String    @db.Uuid
+  course_id                                String?   @db.Uuid
   content                                  String
   is_read                                  Boolean?  @default(false)
   is_from_teacher                          Boolean?  @default(true) @map("is_from_teacher")
@@ -422,6 +426,24 @@ model teacher_messages {
   @@index([student_id], map: "idx_teacher_messages_student_id")
   @@index([teacher_id], map: "idx_teacher_messages_teacher_id")
   @@index([teacher_id, is_read], map: "idx_teacher_messages_teacher_unread", where: raw("(is_read = false)"))
+}
+
+model MentorAssignment {
+  id          String    @id @default(uuid()) @db.Uuid
+  studentId   String    @map("student_id") @db.Uuid
+  teacherId   String    @map("teacher_id") @db.Uuid
+  courseId    String    @map("course_id") @db.Uuid
+  status      String    @default("active")
+  assignedAt  DateTime  @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student     User      @relation("MentorAssignment_student", fields: [studentId], references: [id], onDelete: Cascade)
+  teacher     User      @relation("MentorAssignment_teacher", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, courseId])
+  @@index([teacherId, status])
+  @@index([studentId, status])
+  @@map("mentor_assignments")
 }
 
 enum Role {
@@ -522,3 +544,4 @@ enum ExtraCourseEnrollmentStatus {
   active
   rejected
 }
+

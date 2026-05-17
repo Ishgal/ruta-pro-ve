@@ -31,6 +31,8 @@ export async function GET(
           id: true,
           title: true,
           isPublished: true,
+          careers: true,
+          levelId: true,
           level: { select: { name: true } }
         }
       }
@@ -44,9 +46,11 @@ export async function GET(
       id: true,
       title: true,
       isPublished: true,
+      careers: true,
+      levelId: true,
       level: { select: { name: true } }
     },
-    orderBy: { title: 'asc' }
+    orderBy: [{ levelId: 'asc' }, { title: 'asc' }]
   });
 
   // Filtrar cursos no asignados

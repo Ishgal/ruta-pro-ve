@@ -12,7 +12,7 @@ export async function GET() {
 
   const courses = await prisma.course.findMany({
     include: { level: true, lessons: { orderBy: { displayOrder: 'asc' } } },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ levelId: 'asc' }, { title: 'asc' }],
   })
   return NextResponse.json(courses)
 }

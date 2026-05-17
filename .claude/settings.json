@@ -33,7 +33,9 @@
       "Bash(node -e \"require\\('sharp'\\); console.log\\('sharp OK'\\)\")",
       "Bash(node scripts/trim-mascot.mjs)",
       "Bash(DATABASE_URL=\"postgresql://postgres.wfwpagaswdyemlqiqnjl:Proyectorutave2026@aws-1-us-east-1.pooler.supabase.com:5432/postgres\" npx prisma db push)",
-      "Bash(node scripts/apply-quiz-migration.mjs)"
+      "Bash(node scripts/apply-quiz-migration.mjs)",
+      "Bash(npx dotenv *)",
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); console.log\\('DIRECT_URL exists:', !!process.env.DIRECT_URL\\); console.log\\('DATABASE_URL port:', process.env.DATABASE_URL?.match\\(/:\\(\\\\d+\\)\\\\//\\)?.[1] || 'not found'\\)\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\Marcu\\OneDrive\\Documents\\Ruta pro ve\\ruta-pro-ve\\app\\dashboard\\courses",
