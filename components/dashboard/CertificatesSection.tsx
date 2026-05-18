@@ -217,7 +217,7 @@ export default function CertificatesSection({ certs, certPrice, paymentAccounts,
         {preview.map(cert => {
           const state = certState(cert)
           return (
-            <div key={cert.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors">
+            <div key={cert.id} className="flex items-center gap-2 sm:gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors">
               <div className={`w-12 h-10 rounded-lg flex items-center justify-center shrink-0 ${
                 state === 'unlocked' ? 'bg-[#1B4F8C]' :
                 state === 'pending'  ? 'bg-amber-100'  : 'bg-gray-100'
@@ -241,11 +241,11 @@ export default function CertificatesSection({ certs, certPrice, paymentAccounts,
 
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-gray-900 text-sm truncate">{cert.course.title}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  {state === 'unlocked' && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full uppercase tracking-wider">Desbloqueado</span>}
-                  {state === 'pending'  && <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full uppercase tracking-wider">Pago en verificacion</span>}
-                  {state === 'locked'   && <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full uppercase tracking-wider">Bloqueado · ${certPrice}</span>}
-                  <span className="text-xs text-gray-400">ID: {cert.qrCode.slice(0, 12)}</span>
+                <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                  {state === 'unlocked' && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap">Desbloqueado</span>}
+                  {state === 'pending'  && <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap">En verificacion</span>}
+                  {state === 'locked'   && <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap">Bloqueado · ${certPrice}</span>}
+                  <span className="text-xs text-gray-400 truncate max-w-full">ID: {cert.qrCode.slice(0, 12)}</span>
                 </div>
               </div>
 
@@ -298,7 +298,7 @@ export default function CertificatesSection({ certs, certPrice, paymentAccounts,
               {localCerts.map(cert => {
                 const state = certState(cert)
                 return (
-                  <div key={cert.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors">
+                  <div key={cert.id} className="flex items-center gap-2 sm:gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
                       state === 'unlocked' ? 'bg-[#1B4F8C]' :
                       state === 'pending'  ? 'bg-amber-100'  : 'bg-gray-100'
@@ -309,10 +309,11 @@ export default function CertificatesSection({ certs, certPrice, paymentAccounts,
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate">{cert.course.title}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {state === 'unlocked' && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full uppercase tracking-wider">Desbloqueado</span>}
-                        {state === 'pending'  && <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full uppercase tracking-wider">En verificacion</span>}
-                        {state === 'locked'   && <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full uppercase tracking-wider">Bloqueado</span>}
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        {state === 'unlocked' && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap">Desbloqueado</span>}
+                        {state === 'pending'  && <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap">En verificacion</span>}
+                        {state === 'locked'   && <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap">Bloqueado</span>}
+                        <span className="text-xs text-gray-400 truncate max-w-full">ID: {cert.qrCode.slice(0, 12)}</span>
                       </div>
                     </div>
                     {state === 'unlocked' && (
