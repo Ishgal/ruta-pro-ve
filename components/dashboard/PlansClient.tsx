@@ -205,23 +205,25 @@ export default function PlansClient({ plans, paymentAccounts }: { plans: Plans; 
                 <p className="text-sm text-gray-500 mb-4">Pago mensual, renovacion manual</p>
 
                 {/* Price box */}
-                <div className="bg-gray-50 rounded-xl p-4 mb-4 relative">
+                <div className="bg-gray-50 rounded-xl p-4 mb-4 flex justify-between items-start flex-wrap gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-0.5">Monto a pagar</p>
+                    <p className="text-2xl font-black text-gray-900">
+                      ${planData?.price} <span className="text-sm font-normal text-gray-400">USD</span>
+                    </p>
+                    {method === 'pago_movil' && bcvRate && planData && (
+                      <p className="text-lg font-bold text-gray-700 mt-1">
+                        ≈ {(parseFloat(planData.price) * bcvRate).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.')}{' '}
+                        <span className="text-sm font-normal text-gray-400">Bs.</span>
+                      </p>
+                    )}
+                  </div>
                   {bcvRate && bcvDate && method === 'pago_movil' && (
-                    <div className="absolute top-3 right-3 bg-blue-100 text-blue-700 rounded-lg px-2.5 py-1.5 text-right">
+                    <div className="bg-blue-100 text-blue-700 rounded-lg px-2.5 py-1.5 text-right shrink-0">
                       <p className="text-[10px] font-bold uppercase tracking-wide leading-none">Tasa BCV</p>
                       <p className="text-sm font-black leading-snug">{bcvRate.toFixed(2)} Bs/$</p>
                       <p className="text-[10px] text-blue-500 leading-none">{formatBcvDate(bcvDate)}</p>
                     </div>
-                  )}
-                  <p className="text-xs text-gray-500 mb-0.5">Monto a pagar</p>
-                  <p className="text-2xl font-black text-gray-900">
-                    ${planData?.price} <span className="text-sm font-normal text-gray-400">USD</span>
-                  </p>
-                  {method === 'pago_movil' && bcvRate && planData && (
-                    <p className="text-lg font-bold text-gray-700 mt-1">
-                      ≈ {(parseFloat(planData.price) * bcvRate).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.')}{' '}
-                      <span className="text-sm font-normal text-gray-400">Bs.</span>
-                    </p>
                   )}
                 </div>
 

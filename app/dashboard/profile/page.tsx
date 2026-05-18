@@ -241,8 +241,8 @@ export default async function ProfilePage() {
                   Estudiante — {levelName}
                 </span>
               </div>
-              <div className="flex items-center gap-2 mb-2">
-                <h1 className="text-2xl font-black text-gray-900">{dbUser.name}</h1>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <h1 className="text-2xl font-black text-gray-900 truncate max-w-full">{dbUser.name}</h1>
                 {dbUser.plan === 'bronce' && (
                   <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-orange-50 text-orange-500 border border-orange-200">Bronce</span>
                 )}
@@ -297,9 +297,9 @@ export default async function ProfilePage() {
                 <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
               </svg>
             </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2">
-                <h1 className="text-xl font-black text-gray-900">{dbUser.name}</h1>
+            <div className="text-center w-full min-w-0">
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <h1 className="text-xl font-black text-gray-900 truncate max-w-full">{dbUser.name}</h1>
                 {dbUser.plan === 'bronce' && (
                   <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-orange-50 text-orange-500 border border-orange-200">Bronce</span>
                 )}

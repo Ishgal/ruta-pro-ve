@@ -108,7 +108,7 @@ export default async function DashboardPage() {
 
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-5 py-5 md:px-8">
-        <div className="flex items-start justify-between w-full">
+        <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-4">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Hola, {firstName}</h1>
             <p className="text-sm text-gray-500 mt-0.5">
@@ -121,7 +121,7 @@ export default async function DashboardPage() {
           </div>
 
           {/* Stats pills + mentoring */}
-          <div className="flex gap-3 items-center">
+          <div className="flex flex-wrap gap-2 md:gap-3 items-center">
             {isOro && (
               <button
                 disabled
