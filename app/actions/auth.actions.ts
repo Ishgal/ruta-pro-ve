@@ -33,7 +33,7 @@ export async function registerAction(
 
   if (result.error) return { error: result.error }
 
-  redirect('/verify-email')
+  redirect('/login')
 }
 
 export async function loginAction(
