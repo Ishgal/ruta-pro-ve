@@ -54,9 +54,9 @@ export default function BadgesSection({ badges }: { badges: Badge[] }) {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4 py-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-full flex flex-col overflow-hidden">
+            <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <h3 className="font-bold text-gray-900">Todas las insignias</h3>
               <button
                 onClick={() => setShowModal(false)}
@@ -68,7 +68,7 @@ export default function BadgesSection({ badges }: { badges: Badge[] }) {
               </button>
             </div>
 
-            <div className="overflow-y-auto flex-1 px-6 py-4 flex flex-col gap-3">
+            <div className="overflow-y-auto flex-1 px-6 py-4 flex flex-col gap-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {badges.map((ub) => (
                 <div key={ub.id} className="flex items-center gap-4 p-3 rounded-xl bg-gray-50">
                   <div className="w-12 h-12 rounded-full bg-[#E6F8F8] flex items-center justify-center shrink-0">

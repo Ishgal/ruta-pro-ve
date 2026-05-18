@@ -281,20 +281,20 @@ export default function CertificatesSection({ certs, certPrice, paymentAccounts,
 
       {/* Ver todos modal */}
       {showAllModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4 py-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-full flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
               <h3 className="font-bold text-gray-900">Todos los certificados</h3>
               <button
                 onClick={() => setShowAllModal(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors shrink-0"
               >
                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <div className="overflow-y-auto flex-1 px-6 py-4 flex flex-col gap-3">
+            <div className="overflow-y-auto flex-1 px-6 py-4 flex flex-col gap-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {localCerts.map(cert => {
                 const state = certState(cert)
                 return (
@@ -353,16 +353,10 @@ export default function CertificatesSection({ certs, certPrice, paymentAccounts,
 
       {/* Payment modal */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-7 relative max-h-[90vh] overflow-y-auto">
-            <button onClick={closeModal} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4 py-6">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full flex flex-col relative max-h-full overflow-hidden">
             {done ? (
-              <div className="flex flex-col items-center text-center gap-4 py-4">
+              <div className="flex flex-col items-center text-center gap-4 py-8 px-6">
                 <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center">
                   <svg className="w-7 h-7 text-amber-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -376,10 +370,22 @@ export default function CertificatesSection({ certs, certPrice, paymentAccounts,
               </div>
             ) : (
               <>
-                <h3 className="text-base font-black text-gray-900 mb-0.5">Desbloquear certificado</h3>
-                <p className="text-sm text-gray-500 mb-4">{selected.course.title}</p>
+                {/* Header fijo */}
+                <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                  <div className="min-w-0 pr-4">
+                    <h3 className="text-base font-black text-gray-900 leading-tight">Desbloquear certificado</h3>
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">{selected.course.title}</p>
+                  </div>
+                  <button onClick={closeModal} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors shrink-0">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
 
-                {/* Price box */}
+                {/* Body scrolleable */}
+                <div className="flex-1 overflow-y-auto px-6 py-5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {/* Price box */}
                 <div className="bg-gray-50 rounded-xl p-4 mb-4 relative">
                   {bcvRate && bcvDate && (
                     <div className="absolute top-3 right-3 bg-blue-100 text-blue-700 rounded-lg px-2.5 py-1.5 text-right">
@@ -519,16 +525,20 @@ export default function CertificatesSection({ certs, certPrice, paymentAccounts,
                   placeholder="Numero de referencia / TxID"
                   value={reference}
                   onChange={e => setReference(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#1B4F8C] mb-4"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#1B4F8C]"
                 />
+                </div>
 
-                <button
-                  disabled={!reference.trim() || !paymentDate || submitting}
-                  onClick={submitPayment}
-                  className="w-full py-3 rounded-xl bg-[#1B4F8C] text-white text-sm font-bold disabled:opacity-40 hover:bg-[#163e6e] transition-colors"
-                >
-                  {submitting ? 'Enviando...' : 'Confirmar pago'}
-                </button>
+                {/* Footer fijo */}
+                <div className="shrink-0 px-6 py-4 border-t border-gray-100 bg-gray-50">
+                  <button
+                    disabled={!reference.trim() || !paymentDate || submitting}
+                    onClick={submitPayment}
+                    className="w-full py-3 rounded-xl bg-[#1B4F8C] text-white text-sm font-bold disabled:opacity-40 hover:bg-[#163e6e] transition-colors"
+                  >
+                    {submitting ? 'Enviando...' : 'Confirmar pago'}
+                  </button>
+                </div>
               </>
             )}
           </div>

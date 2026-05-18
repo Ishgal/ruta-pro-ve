@@ -130,15 +130,15 @@ export default function ExamModal({ courseId, courseTitle, onClose, onPassed }: 
   const answeredAll = examData?.questions.every(q => (answers[q.id] ?? '').trim() !== '')
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pt-4 pb-20 md:p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6 md:p-4 bg-black/50 backdrop-blur-sm">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-full flex flex-col overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex-1 min-w-0 pr-4">
             <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Examen Final</p>
             <h2 className="text-base font-bold text-gray-900 leading-tight">{courseTitle}</h2>
@@ -153,7 +153,7 @@ export default function ExamModal({ courseId, courseTitle, onClose, onPassed }: 
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
 
           {/* Loading — Ruty pensando */}
           <AnimatePresence mode="wait">
