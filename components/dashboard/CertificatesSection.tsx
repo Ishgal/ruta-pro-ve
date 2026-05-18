@@ -353,194 +353,195 @@ export default function CertificatesSection({ certs, certPrice, paymentAccounts,
 
       {/* Payment modal */}
       {selected && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4 py-6">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full flex flex-col relative max-h-full overflow-hidden">
-            {done ? (
-              <div className="flex flex-col items-center text-center gap-4 py-8 px-6">
-                <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center">
-                  <svg className="w-7 h-7 text-amber-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+        <div className="fixed inset-0 z-[100] bg-black/50 overflow-y-auto">
+          <div className="min-h-screen px-4 py-6 flex items-center justify-center">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full relative">
+              <button 
+                onClick={closeModal} 
+                className="absolute top-3 right-3 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 hover:bg-gray-100 transition-colors"
+                aria-label="Cerrar modal"
+                type="button"
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
+              {done ? (
+                <div className="flex flex-col items-center text-center gap-4 py-10 px-6">
+                  <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center">
+                    <svg className="w-7 h-7 text-amber-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-gray-900">Pago enviado</h3>
+                    <p className="text-sm text-gray-500 mt-1">Tu pago esta en revision. Cuando sea aprobado tu certificado quedara disponible.</p>
+                  </div>
+                  <button onClick={closeModal} className="w-full py-3 rounded-xl bg-[#1B4F8C] text-white text-sm font-bold">Entendido</button>
                 </div>
-                <div>
-                  <h3 className="text-base font-black text-gray-900">Pago enviado</h3>
-                  <p className="text-sm text-gray-500 mt-1">Tu pago esta en revision. Cuando sea aprobado tu certificado quedara disponible.</p>
-                </div>
-                <button onClick={closeModal} className="w-full py-3 rounded-xl bg-[#1B4F8C] text-white text-sm font-bold">Entendido</button>
-              </div>
-            ) : (
-              <>
-                {/* Header fijo */}
-                <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                  <div className="min-w-0 pr-4">
+              ) : (
+                <div className="p-5 sm:p-6 flex flex-col">
+                  <div className="pr-10 mb-4">
                     <h3 className="text-base font-black text-gray-900 leading-tight">Desbloquear certificado</h3>
                     <p className="text-xs text-gray-500 mt-0.5 truncate">{selected.course.title}</p>
                   </div>
-                  <button onClick={closeModal} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors shrink-0">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
 
-                {/* Body scrolleable */}
-                <div className="flex-1 overflow-y-auto px-6 py-5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   {/* Price box */}
-                <div className="bg-gray-50 rounded-xl p-4 mb-4 relative">
-                  {bcvRate && bcvDate && (
-                    <div className="absolute top-3 right-3 bg-blue-100 text-blue-700 rounded-lg px-2.5 py-1.5 text-right">
-                      <p className="text-[10px] font-bold uppercase tracking-wide leading-none">Tasa BCV</p>
-                      <p className="text-sm font-black leading-snug">{bcvRate.toFixed(2)} Bs/$</p>
-                      <p className="text-[10px] text-blue-500 leading-none">{formatBcvDate(bcvDate)}</p>
-                    </div>
-                  )}
-                  <p className="text-xs text-gray-500 mb-0.5">Monto a pagar</p>
-                  {appliedCoupon && (
-                    <p className="text-sm text-gray-400 line-through">${base.toFixed(2)} USD</p>
-                  )}
-                  <p className="text-2xl font-black text-gray-900">
-                    ${finalPrice.toFixed(2)}{' '}
-                    <span className="text-sm font-normal text-gray-400">USD</span>
-                    {appliedCoupon && (
-                      <span className="ml-2 text-sm font-bold text-green-600">-{appliedCoupon.discountPct}%</span>
-                    )}
-                  </p>
-                  {method === 'pago_movil' && bsAmount && (
-                    <p className="text-lg font-bold text-gray-700 mt-1">
-                      ≈ {formatBs(bsAmount)}{' '}
-                      <span className="text-sm font-normal text-gray-400">Bs.</span>
-                    </p>
-                  )}
-                </div>
-
-                {/* Coupon section */}
-                {availableCoupons.length > 0 && (
-                  <div className="mb-4">
-                    {!appliedCoupon ? (
-                      <div className="bg-green-50 border border-green-200 rounded-xl p-3">
-                        <p className="text-xs font-semibold text-green-800 mb-2">
-                          Tienes {availableCoupons.length} cupon{availableCoupons.length > 1 ? 'es' : ''} de descuento disponible{availableCoupons.length > 1 ? 's' : ''}
+                  <div className="bg-gray-50 rounded-xl p-3 mb-3 flex justify-between items-start flex-wrap gap-3">
+                    <div>
+                      <p className="text-[11px] text-gray-500 mb-0.5">Monto a pagar</p>
+                      {appliedCoupon && (
+                        <p className="text-[11px] text-gray-400 line-through">${base.toFixed(2)} USD</p>
+                      )}
+                      <p className="text-xl font-black text-gray-900 leading-none">
+                        ${finalPrice.toFixed(2)}{' '}
+                        <span className="text-xs font-normal text-gray-400">USD</span>
+                        {appliedCoupon && (
+                          <span className="ml-2 text-xs font-bold text-green-600">-{appliedCoupon.discountPct}%</span>
+                        )}
+                      </p>
+                      {method === 'pago_movil' && bsAmount && (
+                        <p className="text-sm font-bold text-gray-700 mt-1">
+                          ≈ {formatBs(bsAmount)}{' '}
+                          <span className="text-[10px] font-normal text-gray-400">Bs.</span>
                         </p>
-                        <div className="flex flex-col gap-1.5">
-                          {availableCoupons.map(c => (
-                            <button
-                              key={c.id}
-                              onClick={() => setAppliedCoupon(c)}
-                              className="flex items-center justify-between text-left px-3 py-2 rounded-lg bg-white border border-green-200 hover:border-green-400 transition-colors"
-                            >
-                              <span className="text-sm font-bold text-green-700">{c.discountPct}% de descuento</span>
-                              <span className="text-[10px] text-gray-400">Vence {formatBcvDate(c.expiresAt)}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between bg-green-50 border border-green-300 rounded-xl px-3 py-2.5">
-                        <div className="flex items-center gap-2">
-                          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <span className="text-sm font-bold text-green-700">Cupon de {appliedCoupon.discountPct}% aplicado</span>
-                        </div>
-                        <button onClick={() => setAppliedCoupon(null)} className="text-xs text-gray-400 hover:text-gray-600 underline">
-                          Quitar
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Method tabs */}
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Metodo de pago</p>
-                <div className="flex gap-2 mb-4">
-                  {(['pago_movil', 'binance_usdt'] as PaymentMethod[]).map(m => {
-                    const hasAccounts = paymentAccounts.some(a => a.method === m)
-                    if (!hasAccounts) return null
-                    return (
-                      <button key={m} onClick={() => switchMethod(m)} className={`flex-1 py-2.5 px-3 rounded-xl border-2 text-xs font-semibold transition-all ${
-                        method === m ? 'border-[#1B4F8C] bg-blue-50 text-[#1B4F8C]' : 'border-gray-200 text-gray-500'
-                      }`}>
-                        {m === 'pago_movil' ? 'Pago Movil' : 'Binance USDT'}
-                      </button>
-                    )
-                  })}
-                </div>
-
-                {/* Account selector */}
-                {accountsForMethod.length > 1 && (
-                  <div className="mb-4">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Cuenta destino</p>
-                    <div className="flex flex-col gap-1.5">
-                      {accountsForMethod.map(acc => (
-                        <button key={acc.id} onClick={() => setSelectedAccountId(acc.id)} className={`text-left px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
-                          selectedAccount?.id === acc.id ? 'border-[#1B4F8C] bg-blue-50 text-[#1B4F8C]' : 'border-gray-200 text-gray-600'
-                        }`}>
-                          {acc.label}
-                        </button>
-                      ))}
+                      )}
                     </div>
-                  </div>
-                )}
-
-                {/* Account details */}
-                {selectedAccount && (
-                  <div className="bg-blue-50 rounded-xl p-4 mb-4 text-xs text-gray-700 space-y-1">
-                    <p className="font-semibold text-gray-800 mb-1">{selectedAccount.label}</p>
-                    {method === 'pago_movil' && (
-                      <>
-                        {selectedAccount.details.phone  && <p><span className="font-semibold">Telefono:</span> {selectedAccount.details.phone}</p>}
-                        {selectedAccount.details.bank   && <p><span className="font-semibold">Banco:</span> {selectedAccount.details.bank}</p>}
-                        {selectedAccount.details.ci     && <p><span className="font-semibold">CI:</span> {selectedAccount.details.ci}</p>}
-                        {selectedAccount.details.holder && <p><span className="font-semibold">Nombre:</span> {selectedAccount.details.holder}</p>}
-                      </>
+                    {bcvRate && bcvDate && method === 'pago_movil' && (
+                      <div className="bg-blue-100 text-blue-700 rounded-lg px-2 py-1 text-right shrink-0">
+                        <p className="text-[9px] font-bold uppercase tracking-wide leading-none mb-0.5">Tasa BCV</p>
+                        <p className="text-xs font-black leading-snug">{bcvRate.toFixed(2)} Bs/$</p>
+                        <p className="text-[9px] text-blue-500 leading-none">{formatBcvDate(bcvDate)}</p>
+                      </div>
                     )}
-                    {method === 'binance_usdt' && (
-                      <>
-                        {selectedAccount.details.network && <p><span className="font-semibold">Red:</span> {selectedAccount.details.network}</p>}
-                        {selectedAccount.details.wallet  && <p className="break-all"><span className="font-semibold">Wallet:</span> {selectedAccount.details.wallet}</p>}
-                        {selectedAccount.details.email   && <p><span className="font-semibold">Email Binance:</span> {selectedAccount.details.email}</p>}
-                      </>
-                    )}
-                    <p className="text-gray-400 pt-1">
-                      Envia exactamente ${finalPrice.toFixed(2)} USD e ingresa el numero de referencia abajo.
-                    </p>
                   </div>
-                )}
 
-                {/* Fecha del pago */}
-                <div className="mb-3">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Fecha del pago *</p>
-                  <input
-                    type="date"
-                    value={paymentDate}
-                    max={todayStr()}
-                    onChange={e => setPaymentDate(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:outline-none focus:border-[#1B4F8C]"
-                  />
-                </div>
+                  {/* Coupon section */}
+                  {availableCoupons.length > 0 && (
+                    <div className="mb-4">
+                      {!appliedCoupon ? (
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                          <p className="text-[11px] font-semibold text-green-800 mb-2">
+                            Tienes {availableCoupons.length} cupon{availableCoupons.length > 1 ? 'es' : ''} disponible{availableCoupons.length > 1 ? 's' : ''}
+                          </p>
+                          <div className="flex flex-col gap-1.5">
+                            {availableCoupons.map(c => (
+                              <button
+                                key={c.id}
+                                onClick={() => setAppliedCoupon(c)}
+                                className="flex items-center justify-between text-left px-3 py-2 rounded-lg bg-white border border-green-200 hover:border-green-400 transition-colors"
+                              >
+                                <span className="text-[11px] font-bold text-green-700">{c.discountPct}% descuento</span>
+                                <span className="text-[9px] text-gray-400">Vence {formatBcvDate(c.expiresAt)}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between bg-green-50 border border-green-300 rounded-xl px-3 py-2">
+                          <div className="flex items-center gap-1.5">
+                            <svg className="w-3.5 h-3.5 text-green-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-[11px] font-bold text-green-700">Cupon -{appliedCoupon.discountPct}%</span>
+                          </div>
+                          <button onClick={() => setAppliedCoupon(null)} className="text-[10px] text-gray-400 hover:text-gray-600 underline">
+                            Quitar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
+                  {/* Method tabs */}
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Metodo de pago</p>
+                  <div className="flex gap-2 mb-3">
+                    {(['pago_movil', 'binance_usdt'] as PaymentMethod[]).map(m => {
+                      const hasAccounts = paymentAccounts.some(a => a.method === m)
+                      if (!hasAccounts) return null
+                      return (
+                        <button key={m} onClick={() => switchMethod(m)} className={`flex-1 py-2 px-2 rounded-xl border-2 text-[11px] font-semibold transition-all ${
+                          method === m ? 'border-[#1B4F8C] bg-blue-50 text-[#1B4F8C]' : 'border-gray-200 text-gray-500'
+                        }`}>
+                          {m === 'pago_movil' ? 'Pago Movil' : 'Binance USDT'}
+                        </button>
+                      )
+                    })}
+                  </div>
 
-                <input
-                  type="text"
-                  placeholder="Numero de referencia / TxID"
-                  value={reference}
-                  onChange={e => setReference(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#1B4F8C]"
-                />
-                </div>
+                  {/* Account selector */}
+                  {accountsForMethod.length > 1 && (
+                    <div className="mb-3">
+                      <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Cuenta destino</p>
+                      <div className="flex flex-col gap-1.5">
+                        {accountsForMethod.map(acc => (
+                          <button key={acc.id} onClick={() => setSelectedAccountId(acc.id)} className={`text-left px-3 py-2 rounded-lg border text-[11px] font-medium transition-all ${
+                            selectedAccount?.id === acc.id ? 'border-[#1B4F8C] bg-blue-50 text-[#1B4F8C]' : 'border-gray-200 text-gray-600'
+                          }`}>
+                            {acc.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                {/* Footer fijo */}
-                <div className="shrink-0 px-6 py-4 border-t border-gray-100 bg-gray-50">
+                  {/* Account details */}
+                  {selectedAccount && (
+                    <div className="bg-blue-50 rounded-xl p-3 mb-4 text-[11px] text-gray-700 space-y-0.5">
+                      <p className="font-semibold text-gray-800 mb-1">{selectedAccount.label}</p>
+                      {method === 'pago_movil' && (
+                        <>
+                          {selectedAccount.details.phone  && <p><span className="font-semibold">Tel:</span> {selectedAccount.details.phone}</p>}
+                          {selectedAccount.details.bank   && <p><span className="font-semibold">Banco:</span> {selectedAccount.details.bank}</p>}
+                          {selectedAccount.details.ci     && <p><span className="font-semibold">CI:</span> {selectedAccount.details.ci}</p>}
+                          {selectedAccount.details.holder && <p><span className="font-semibold">Nombre:</span> {selectedAccount.details.holder}</p>}
+                        </>
+                      )}
+                      {method === 'binance_usdt' && (
+                        <>
+                          {selectedAccount.details.network && <p><span className="font-semibold">Red:</span> {selectedAccount.details.network}</p>}
+                          {selectedAccount.details.wallet  && <p className="break-all"><span className="font-semibold">Wallet:</span> {selectedAccount.details.wallet}</p>}
+                          {selectedAccount.details.email   && <p><span className="font-semibold">Email:</span> {selectedAccount.details.email}</p>}
+                        </>
+                      )}
+                      <p className="text-gray-400 pt-1 leading-snug">
+                        Envia exactamente ${finalPrice.toFixed(2)} USD e ingresa la referencia.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Inputs */}
+                  <div className="flex flex-col gap-3 mb-4">
+                    <div>
+                      <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Fecha del pago *</p>
+                      <input
+                        type="date"
+                        value={paymentDate}
+                        max={todayStr()}
+                        onChange={e => setPaymentDate(e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs text-gray-900 focus:outline-none focus:border-[#1B4F8C]"
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Numero de referencia / TxID"
+                      value={reference}
+                      onChange={e => setReference(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#1B4F8C]"
+                    />
+                  </div>
+
                   <button
                     disabled={!reference.trim() || !paymentDate || submitting}
                     onClick={submitPayment}
-                    className="w-full py-3 rounded-xl bg-[#1B4F8C] text-white text-sm font-bold disabled:opacity-40 hover:bg-[#163e6e] transition-colors"
+                    className="w-full py-3 rounded-xl bg-[#1B4F8C] text-white text-sm font-bold disabled:opacity-40 hover:bg-[#163e6e] transition-colors mt-auto"
                   >
                     {submitting ? 'Enviando...' : 'Confirmar pago'}
                   </button>
                 </div>
-              </>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}
