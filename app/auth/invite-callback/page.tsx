@@ -19,9 +19,12 @@ export default function InviteCallbackPage() {
         const refresh_token = params.get('refresh_token')
 
         if (access_token && refresh_token) {
-          const { error } = await supabase.auth.setSession({ access_token, refresh_token })
+          const { error, data } = await supabase.auth.setSession({ access_token, refresh_token })
           if (error) router.replace('/login?error=El+enlace+es+inválido+o+ya+expiró')
-          else router.replace('/auth/set-password')
+          else {
+            const role = data.user?.user_metadata?.role
+            router.replace(role === 'docente' ? '/auth/set-password' : '/login')
+          }
           return
         }
       }
@@ -29,9 +32,12 @@ export default function InviteCallbackPage() {
       // Flujo PKCE (query): Supabase redirige con ?code=...
       const code = new URLSearchParams(window.location.search).get('code')
       if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        const { error, data } = await supabase.auth.exchangeCodeForSession(code)
         if (error) router.replace('/login?error=El+enlace+es+inválido+o+ya+expiró')
-        else router.replace('/auth/set-password')
+        else {
+          const role = data.user?.user_metadata?.role
+          router.replace(role === 'docente' ? '/auth/set-password' : '/login')
+        }
         return
       }
 
