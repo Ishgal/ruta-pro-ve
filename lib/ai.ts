@@ -1,5 +1,5 @@
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama-3.3-70b-versatile'
+const GROQ_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
+const GROQ_MODEL = 'gemini-3.6-flash'
 
 export async function generateContent({
   systemInstruction,
@@ -24,7 +24,7 @@ export async function generateContent({
         })),
       ],
       temperature: 0.7,
-      max_tokens: 1024,
+      max_tokens: 4096,
     }),
   })
 

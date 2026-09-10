@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama-3.3-70b-versatile'
+const GROQ_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
+const GROQ_MODEL = 'gemini-3.6-flash'
 
 export type QuestionType = 'multiple_choice' | 'true_false' | 'fill_blank' | 'development' | 'exercise'
 

@@ -6,8 +6,8 @@ import { checkAndAwardBadges } from '@/lib/badges'
 import { checkAndAdvanceLevel } from '@/lib/level'
 import type { ExamData, ExamQuestion } from '../route'
 
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama-3.3-70b-versatile'
+const GROQ_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
+const GROQ_MODEL = 'gemini-3.6-flash'
 
 const XP_PER_COURSE = 100
 

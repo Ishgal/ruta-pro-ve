@@ -8,8 +8,9 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
   try {
     // Usar require en lugar de import para evitar problemas de tipos
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require('pdf-parse')
-    const result = await pdfParse(buffer)
+    const pdfParseLib = require('pdf-parse')
+    const parse = pdfParseLib.default || pdfParseLib
+    const result = await parse(buffer)
     return (result.text ?? '').slice(0, MAX_CV_TEXT).trim()
   } catch (error) {
     console.error('Error extracting PDF text:', error)
